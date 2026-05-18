@@ -33,7 +33,7 @@ cd py && python -m code_sandbox_bench.bench --provider local --task-index 0 --ou
 Bun/TypeScript:
 
 ```bash
-cd ts && bun install && cp ../.env.example ../.env
+cd ts && npm install && cp ../.env.example ../.env
 ```
 
 ```bash
@@ -85,7 +85,7 @@ The benchmark is verifier-only. It does not run a solver/model edit step, so the
 
 ## Notes
 
-- Vercel uses the public `sandbox` CLI. Install/auth with `npm i -g sandbox` and `sandbox login`, or provide token/team env as supported by your Vercel setup.
+- Vercel uses `@vercel/sandbox`. For local access-token auth, set `VERCEL_ACCESS_TOKEN` or `VERCEL_TOKEN`, plus `VERCEL_TEAM_ID` and `VERCEL_PROJECT_ID`. The SDK can also use Vercel OIDC credentials when available.
 - Modal requires the Modal SDK credentials supported by `modal`.
 - Daytona requires `DAYTONA_API_KEY` and, when not using SDK defaults, `DAYTONA_API_URL` and `DAYTONA_TARGET`.
 - Cost estimates are upper bounds based on wall-clock duration. See `reports/terminalbench_provider_report.md` for the current measured Vercel run and normalized side-by-side table.

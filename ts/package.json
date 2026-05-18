@@ -10,6 +10,7 @@
   "dependencies": {
     "@daytona/sdk": "^0.175.0",
     "@types/bun": "^1.2.16",
+    "@vercel/sandbox": "^1.10.2",
     "modal": "^0.7.4"
   },
   "devDependencies": {

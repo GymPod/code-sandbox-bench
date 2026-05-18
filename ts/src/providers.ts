@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { $ } from "bun";
 import type { CommandResult } from "./types";
 import { Daytona, type Sandbox as DaytonaSandbox } from "@daytona/sdk";
+import { Sandbox as VercelSandbox } from "@vercel/sandbox";
 import { ModalClient, type App, type Sandbox as ModalSandbox } from "modal";
 
 export interface Provider {
@@ -44,48 +45,64 @@ export class LocalProvider implements Provider {
   }
 }
 
-export class VercelCliProvider implements Provider {
-  private sandboxId: string | undefined;
+export class VercelSdkProvider implements Provider {
+  private sandbox: VercelSandbox | undefined;
 
   constructor(
     private readonly runtime: string,
-    private readonly timeoutSeconds: number
+    private readonly timeoutSeconds: number,
+    private readonly cpu: number
   ) {}
 
   async start(): Promise<void> {
-    const output = await $`sandbox create --runtime ${this.runtime} --timeout ${this.timeoutSeconds}s`.quiet();
-    const text = `${output.stdout.toString()}${output.stderr.toString()}`;
-    const match = text.match(/\b(sbx?_[A-Za-z0-9_-]+)\b/);
-    if (!match) {
-      throw new Error(`Could not parse Vercel sandbox id from output:\\n${text}`);
-    }
-    this.sandboxId = match[1];
+    this.sandbox = await VercelSandbox.create({
+      ...vercelCredentials(),
+      runtime: this.runtime,
+      timeout: this.timeoutSeconds * 1000,
+      resources: { vcpus: this.cpu }
+    });
   }
 
   async run(command: string, cwd: string | undefined, timeoutSeconds: number): Promise<CommandResult> {
-    if (!this.sandboxId) {
+    if (!this.sandbox) {
       throw new Error("Vercel sandbox not started");
     }
-    const args = cwd
-      ? ["sandbox", "exec", "--sudo", "--workdir", cwd, this.sandboxId, "/bin/sh", "-lc", command]
-      : ["sandbox", "exec", "--sudo", this.sandboxId, "/bin/sh", "-lc", command];
-    const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe" });
-    const timeout = setTimeout(() => proc.kill(), timeoutSeconds * 1000);
-    const [stdout, stderr, exitCode] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-      proc.exited
-    ]);
-    clearTimeout(timeout);
-    return { stdout, stderr, returnCode: exitCode };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
+    try {
+      const process = await this.sandbox.runCommand({
+        cmd: "/bin/sh",
+        args: ["-lc", command],
+        cwd,
+        sudo: true,
+        signal: controller.signal
+      });
+      const [stdout, stderr] = await Promise.all([process.stdout(), process.stderr()]);
+      return { stdout, stderr, returnCode: process.exitCode };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   async stop(): Promise<void> {
-    if (this.sandboxId) {
-      await $`sandbox stop ${this.sandboxId}`.quiet().nothrow();
-      this.sandboxId = undefined;
+    if (this.sandbox) {
+      await this.sandbox.stop({ blocking: true });
+      this.sandbox = undefined;
     }
   }
+}
+
+function vercelCredentials(): { token: string; teamId: string; projectId: string } | Record<string, never> {
+  const token = process.env.VERCEL_TOKEN ?? process.env.VERCEL_ACCESS_TOKEN;
+  const teamId = process.env.VERCEL_TEAM_ID;
+  const projectId = process.env.VERCEL_PROJECT_ID;
+  if (token || teamId || projectId) {
+    if (!token || !teamId || !projectId) {
+      throw new Error("Vercel SDK requires VERCEL_TOKEN or VERCEL_ACCESS_TOKEN, plus VERCEL_TEAM_ID and VERCEL_PROJECT_ID");
+    }
+    return { token, teamId, projectId };
+  }
+  return {};
 }
 
 export class ModalProvider implements Provider {
@@ -201,7 +218,7 @@ export function makeProvider(
     return new LocalProvider();
   }
   if (name === "vercel") {
-    return new VercelCliProvider(runtime, timeoutSeconds);
+    return new VercelSdkProvider(runtime, timeoutSeconds, cpu);
   }
   if (name === "modal") {
     return new ModalProvider(runtime, timeoutSeconds, cpu, memoryGb);

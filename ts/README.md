@@ -3,7 +3,7 @@
 Install:
 
 ```bash
-bun install
+npm install
 ```
 
 Run one local verifier:
@@ -12,7 +12,7 @@ Run one local verifier:
 bun run bench --provider local --task-index 0 --output ../results/ts-local-one.json
 ```
 
-Run all tasks with the Vercel Sandbox CLI:
+Run all tasks with the Vercel Sandbox SDK:
 
 ```bash
 bun run bench --provider vercel --task-index all --output ../results/ts-vercel-all.json
