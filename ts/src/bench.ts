@@ -46,15 +46,22 @@ function parseArgs(argv: string[]): BenchArgs {
   };
 }
 
-function estimateCost(provider: string, seconds: number, cpu: number, memoryGb: number): number {
+function estimateCost(provider: string, seconds: number, cpu: number, memoryGb: number, diskGb: number): number {
   if (provider === "vercel") {
     return (seconds / 3600) * (cpu * 0.128 + memoryGb * 0.0212) + 0.60 / 1_000_000;
+  }
+  if (provider === "modal") {
+    return seconds * ((cpu / 2) * 0.00003942 + memoryGb * 0.00000672);
+  }
+  if (provider === "daytona") {
+    const billableStorageGb = Math.max(0, diskGb - 5);
+    return seconds * (cpu * 0.000014 + memoryGb * 0.0000045 + billableStorageGb * 0.00000003);
   }
   return 0;
 }
 
 async function runTask(args: BenchArgs, task: BenchTask): Promise<Record<string, unknown>> {
-  const provider = makeProvider(args.provider, args.runtime, args.timeoutSeconds);
+  const provider = makeProvider(args.provider, args.runtime, args.timeoutSeconds, args.cpu, args.memoryGb, args.diskGb);
   const started = performance.now();
   let result: CommandResult = { stdout: "", stderr: "", returnCode: 1 };
   try {
@@ -71,7 +78,7 @@ async function runTask(args: BenchArgs, task: BenchTask): Promise<Record<string,
     passed: result.returnCode === 0,
     return_code: result.returnCode,
     elapsed_seconds: elapsedSeconds,
-    estimated_cost_usd: estimateCost(args.provider, elapsedSeconds, args.cpu, args.memoryGb),
+    estimated_cost_usd: estimateCost(args.provider, elapsedSeconds, args.cpu, args.memoryGb, args.diskGb),
     stdout_tail: result.stdout.slice(-2000),
     stderr_tail: result.stderr.slice(-2000)
   };

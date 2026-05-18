@@ -5,7 +5,7 @@ Standalone benchmark harness for running the 16-task TerminalBench smoke set acr
 The repo contains both Python and Bun/TypeScript implementations so the runner can be chosen by ecosystem:
 
 - `py/`: Python runner with `local`, `vercel`, `modal`, and `daytona` provider adapters.
-- `ts/`: Bun/TypeScript runner with `local` and Vercel Sandbox CLI adapters, plus the same dataset and output schema.
+- `ts/`: Bun/TypeScript runner with `local`, `vercel`, `modal`, and `daytona` provider adapters, plus the same dataset and output schema.
 - `data/`: bundled TerminalBench smoke parquet and a JSONL mirror for runtimes that do not need parquet parsing.
 - `reports/`: current PR report with measured Vercel results and normalized provider cost comparison.
 
@@ -56,10 +56,18 @@ cd py && python -m code_sandbox_bench.bench --provider modal --task-index all --
 cd py && python -m code_sandbox_bench.bench --provider daytona --task-index all --output ../results/daytona-all.json
 ```
 
-Bun/TypeScript Vercel run:
+Bun/TypeScript all-task runs:
 
 ```bash
 cd ts && bun run bench --provider vercel --task-index all --output ../results/ts-vercel-all.json
+```
+
+```bash
+cd ts && bun run bench --provider modal --task-index all --output ../results/ts-modal-all.json
+```
+
+```bash
+cd ts && bun run bench --provider daytona --task-index all --output ../results/ts-daytona-all.json
 ```
 
 ## What The Benchmark Does
@@ -78,6 +86,6 @@ The benchmark is verifier-only. It does not run a solver/model edit step, so the
 ## Notes
 
 - Vercel uses the public `sandbox` CLI. Install/auth with `npm i -g sandbox` and `sandbox login`, or provide token/team env as supported by your Vercel setup.
-- Modal and Daytona are implemented in the Python runner because their Python SDKs expose the needed sandbox APIs directly.
+- Modal requires the Modal SDK credentials supported by `modal`.
+- Daytona requires `DAYTONA_API_KEY` and, when not using SDK defaults, `DAYTONA_API_URL` and `DAYTONA_TARGET`.
 - Cost estimates are upper bounds based on wall-clock duration. See `reports/terminalbench_provider_report.md` for the current measured Vercel run and normalized side-by-side table.
-

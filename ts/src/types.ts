@@ -14,7 +14,7 @@ export type CommandResult = {
   returnCode: number;
 };
 
-export type ProviderName = "local" | "vercel";
+export type ProviderName = "local" | "vercel" | "modal" | "daytona";
 
 export type BenchArgs = {
   provider: ProviderName;

@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
 import type { CommandResult } from "./types";
+import { Daytona, type Sandbox as DaytonaSandbox } from "@daytona/sdk";
+import { ModalClient, type App, type Sandbox as ModalSandbox } from "modal";
 
 export interface Provider {
   start(): Promise<void>;
@@ -86,12 +88,126 @@ export class VercelCliProvider implements Provider {
   }
 }
 
-export function makeProvider(name: string, runtime: string, timeoutSeconds: number): Provider {
+export class ModalProvider implements Provider {
+  private readonly client = new ModalClient();
+  private app: App | undefined;
+  private sandbox: ModalSandbox | undefined;
+
+  constructor(
+    private readonly image: string,
+    private readonly timeoutSeconds: number,
+    private readonly cpu: number,
+    private readonly memoryGb: number
+  ) {}
+
+  async start(): Promise<void> {
+    this.app = await this.client.apps.fromName("code-sandbox-bench", { createIfMissing: true });
+    const image = this.client.images.fromRegistry(this.image);
+    this.sandbox = await this.client.sandboxes.create(this.app, image, {
+      command: ["sleep", "infinity"],
+      timeoutMs: this.timeoutSeconds * 1000,
+      cpu: this.cpu / 2,
+      memoryMiB: this.memoryGb * 1024
+    });
+  }
+
+  async run(command: string, cwd: string | undefined, timeoutSeconds: number): Promise<CommandResult> {
+    if (!this.sandbox) {
+      throw new Error("Modal sandbox not started");
+    }
+    const process = await this.sandbox.exec(["/bin/sh", "-lc", command], {
+      workdir: cwd,
+      timeoutMs: timeoutSeconds * 1000,
+      mode: "text"
+    });
+    const [stdout, stderr, returnCode] = await Promise.all([
+      process.stdout.readText(),
+      process.stderr.readText(),
+      process.wait()
+    ]);
+    return { stdout, stderr, returnCode };
+  }
+
+  async stop(): Promise<void> {
+    if (this.sandbox) {
+      await this.sandbox.terminate();
+      this.sandbox = undefined;
+    }
+  }
+}
+
+export class DaytonaProvider implements Provider {
+  private readonly client = new Daytona({
+    apiKey: process.env.DAYTONA_API_KEY,
+    apiUrl: process.env.DAYTONA_API_URL,
+    target: process.env.DAYTONA_TARGET || undefined
+  });
+  private sandbox: DaytonaSandbox | undefined;
+
+  constructor(
+    private readonly image: string,
+    private readonly timeoutSeconds: number,
+    private readonly cpu: number,
+    private readonly memoryGb: number,
+    private readonly diskGb: number
+  ) {}
+
+  async start(): Promise<void> {
+    this.sandbox = await this.client.create(
+      {
+        image: this.image,
+        resources: {
+          cpu: this.cpu,
+          memory: this.memoryGb,
+          disk: this.diskGb
+        },
+        autoStopInterval: 0,
+        autoDeleteInterval: 0
+      },
+      { timeout: this.timeoutSeconds }
+    );
+  }
+
+  async run(command: string, cwd: string | undefined, timeoutSeconds: number): Promise<CommandResult> {
+    if (!this.sandbox) {
+      throw new Error("Daytona sandbox not started");
+    }
+    const response = await this.sandbox.process.executeCommand(command, cwd, undefined, timeoutSeconds);
+    return {
+      stdout: response.artifacts?.stdout ?? response.result ?? "",
+      stderr: "",
+      returnCode: response.exitCode ?? 0
+    };
+  }
+
+  async stop(): Promise<void> {
+    if (this.sandbox) {
+      await this.client.delete(this.sandbox);
+      this.sandbox = undefined;
+    }
+    await this.client[Symbol.asyncDispose]();
+  }
+}
+
+export function makeProvider(
+  name: string,
+  runtime: string,
+  timeoutSeconds: number,
+  cpu: number,
+  memoryGb: number,
+  diskGb: number
+): Provider {
   if (name === "local") {
     return new LocalProvider();
   }
   if (name === "vercel") {
     return new VercelCliProvider(runtime, timeoutSeconds);
+  }
+  if (name === "modal") {
+    return new ModalProvider(runtime, timeoutSeconds, cpu, memoryGb);
+  }
+  if (name === "daytona") {
+    return new DaytonaProvider(runtime, timeoutSeconds, cpu, memoryGb, diskGb);
   }
   throw new Error(`Unsupported TypeScript provider: ${name}`);
 }
