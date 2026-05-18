@@ -53,7 +53,7 @@ export class VercelCliProvider implements Provider {
   async start(): Promise<void> {
     const output = await $`sandbox create --runtime ${this.runtime} --timeout ${this.timeoutSeconds}s`.quiet();
     const text = `${output.stdout.toString()}${output.stderr.toString()}`;
-    const match = text.match(/\\b(sb_[A-Za-z0-9_-]+)\\b/);
+    const match = text.match(/\b(sbx?_[A-Za-z0-9_-]+)\b/);
     if (!match) {
       throw new Error(`Could not parse Vercel sandbox id from output:\\n${text}`);
     }
@@ -65,8 +65,8 @@ export class VercelCliProvider implements Provider {
       throw new Error("Vercel sandbox not started");
     }
     const args = cwd
-      ? ["sandbox", "exec", "--workdir", cwd, this.sandboxId, command]
-      : ["sandbox", "exec", this.sandboxId, command];
+      ? ["sandbox", "exec", "--sudo", "--workdir", cwd, this.sandboxId, "/bin/sh", "-lc", command]
+      : ["sandbox", "exec", "--sudo", this.sandboxId, "/bin/sh", "-lc", command];
     const proc = Bun.spawn(args, { stdout: "pipe", stderr: "pipe" });
     const timeout = setTimeout(() => proc.kill(), timeoutSeconds * 1000);
     const [stdout, stderr, exitCode] = await Promise.all([

@@ -38,6 +38,7 @@ function parseArgs(argv: string[]): BenchArgs {
     taskIndex: values.get("--task-index") ?? "all",
     runtime: values.get("--runtime") ?? "python3.13",
     timeoutSeconds: Number.parseInt(values.get("--timeout-seconds") ?? "180", 10),
+    concurrency: Number.parseInt(values.get("--concurrency") ?? "1", 10),
     cpu: Number.parseInt(values.get("--cpu") ?? "2", 10),
     memoryGb: Number.parseInt(values.get("--memory-gb") ?? "4", 10),
     diskGb: Number.parseInt(values.get("--disk-gb") ?? "10", 10),
@@ -79,11 +80,7 @@ async function runTask(args: BenchArgs, task: BenchTask): Promise<Record<string,
 async function main(): Promise<void> {
   const args = parseArgs(Bun.argv.slice(2));
   const tasks = loadTasks(args.dataset, args.taskIndex);
-  const results = [];
-  for (const task of tasks) {
-    console.log(`running ${task.task_id} on ${args.provider}`);
-    results.push(await runTask(args, task));
-  }
+  const results = await runWithConcurrency(tasks, args);
   const summary = {
     provider: args.provider,
     runtime: args.runtime,
@@ -98,6 +95,26 @@ async function main(): Promise<void> {
     writeFileSync(args.output, output);
   }
   console.log(output);
+}
+
+async function runWithConcurrency(tasks: BenchTask[], args: BenchArgs): Promise<Record<string, unknown>[]> {
+  const results: Record<string, unknown>[] = new Array(tasks.length);
+  let nextIndex = 0;
+  const workerCount = Math.max(1, Math.min(args.concurrency, tasks.length));
+  async function worker(): Promise<void> {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= tasks.length) {
+        return;
+      }
+      const task = tasks[index];
+      console.log(`running ${task.task_id} on ${args.provider}`);
+      results[index] = await runTask(args, task);
+    }
+  }
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
 }
 
 await main();

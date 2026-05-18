@@ -22,9 +22,9 @@ export type BenchArgs = {
   taskIndex: string;
   runtime: string;
   timeoutSeconds: number;
+  concurrency: number;
   cpu: number;
   memoryGb: number;
   diskGb: number;
   output?: string;
 };
-
