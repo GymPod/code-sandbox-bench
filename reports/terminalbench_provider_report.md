@@ -1,10 +1,11 @@
 # TerminalBench Sandbox Provider Report
 
-Generated: 2026-05-29T17:34:41.214Z
+Generated: 2026-05-29T17:48:25.729Z
 
 ## Scope
 
 - Dataset: `data/terminalbench_2026_03_05_smoke16.jsonl` (16 tasks).
+- Expanded smoke dataset: `data/swesmith_v4_smoke100.jsonl` (100 evenly sampled SWE-Smith tasks from `~/Downloads/swesmith-v4_train_2026_05_15.parquet`).
 - Verifier-only runs cover cold and warm startup for Vercel, Modal, and Daytona.
 - Solve runs cover warm/snapshot startup for all three providers using `scripts/openrouter_solver.sh` with `deepseek/deepseek-v4-flash` through OpenRouter.
 - Vercel warm uses snapshot `snap_TkzxZLA3B7Jij3GonaqFkUFhSo2K`; Modal warm uses image `im-PN0mo0YJNhDkPn6VWNCLz4`.
@@ -64,6 +65,19 @@ aclocal_macro_not_found_hard | fail 165.87s $0.0157 | fail 181.65s $0.0120 | fai
 - vercel: R_package_dependency_missing_medium, a_star_pathfinding_hard, a_star_pathfinding_medium, aar_android_library_packaging_hard, aar_android_library_packaging_medium, abc_synthesis_optimization_medium, aclocal_macro_not_found_hard
 - modal: a_star_pathfinding_hard, aar_android_library_packaging_hard, aar_android_library_packaging_medium, abc_synthesis_optimization_medium, aclocal_macro_not_found_hard
 - daytona: a_star_pathfinding_hard, aar_android_library_packaging_hard, aar_android_library_packaging_medium, abc_synthesis_optimization_medium, abi_compliance_checker_tool_medium, aclocal_macro_not_found_hard
+
+## Expanded SWE-Smith Smoke100
+
+The repository now includes a broader 100-task smoke slice:
+
+- Source parquet: `~/Downloads/swesmith-v4_train_2026_05_15.parquet`
+- Rows available in source: `37,497`
+- Rows selected: `100`
+- Sampling strategy: evenly spaced by row index for deterministic repository/task diversity
+- Output parquet: `data/swesmith_v4_smoke100.parquet`
+- Output JSONL: `data/swesmith_v4_smoke100.jsonl`
+
+This dataset is structurally compatible with the harness JSONL loader: each row has `task_id`, `prompt`, `instruction`, and embedded `task_files`. The SWE-Smith verifier layout differs from TerminalBench: tasks provide `tests/test.sh` and `solution/*`, and expect their Docker image to provide `/testbed`, conda, and `/opt/verifier-venv`. The TypeScript verifier path now runs `/tests/test.sh` when present, but full provider benchmarking on SWE-Smith still needs per-task Dockerfile/image support instead of the generic `python:3.13` runtime.
 
 ## Raw Artifacts
 

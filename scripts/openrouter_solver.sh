@@ -170,7 +170,7 @@ messages = [
             f"Task:\n{task}\n\n"
             f"Verifier tests:\n{tests}\n\n"
             f"Initial workspace context:\n{context}\n\n"
-            "Write a bash script that completes the task. The verifier is pytest /tests/test_outputs.py."
+            "Write a bash script that completes the task. The verifier is bash /tests/test.sh when present, otherwise pytest /tests/test_outputs.py."
         ),
     },
 ]
@@ -195,7 +195,7 @@ for step in range(1, MAX_STEPS + 1):
         print(stderr[-4000:], file=sys.stderr, flush=True)
 
     verify_rc, verify_stdout, verify_stderr = run(
-        "PATH=\"$HOME/.local/bin:$PATH\" pytest /tests/test_outputs.py -q",
+        "if [ -f /tests/test.sh ]; then bash /tests/test.sh; else PATH=\"$HOME/.local/bin:$PATH\" pytest /tests/test_outputs.py -q; fi",
         STEP_TIMEOUT,
     )
     print(f"verify rc={verify_rc}", flush=True)

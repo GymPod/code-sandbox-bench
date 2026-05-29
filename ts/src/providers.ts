@@ -114,6 +114,7 @@ export class LocalProvider implements Provider {
     return command
       .replace(/(?<![A-Za-z0-9_.-])\/workspace\b/g, join(this.root, "workspace"))
       .replace(/(?<![A-Za-z0-9_.-])\/tests\b/g, join(this.root, "tests"))
+      .replace(/(?<![A-Za-z0-9_.-])\/solution\b/g, join(this.root, "solution"))
       .replace(/(?<![A-Za-z0-9_.-])\/logs\b/g, join(this.root, "logs"))
       .replace(/(?<![A-Za-z0-9_.-])\/tmp\//g, `${join(this.root, "tmp")}/`);
   }

@@ -6,7 +6,7 @@ import type { BenchArgs, BenchTask, CommandResult } from "./types";
 
 const prepareCommand = `
 set -eu
-mkdir -p /tmp/tb /workspace /tests /logs/verifier
+mkdir -p /tmp/tb /workspace /tests /solution /logs/verifier
 python3 - <<'PY'
 import base64
 from pathlib import Path
@@ -14,13 +14,18 @@ Path("/tmp/task.tar.gz").write_bytes(base64.b64decode(Path("/tmp/task.tar.gz.b64
 PY
 tar -xzf /tmp/task.tar.gz -C /tmp/tb
 cp -a /tmp/tb/. /workspace/
-cp -a /tmp/tb/tests/. /tests/
+if [ -d /tmp/tb/tests ]; then cp -a /tmp/tb/tests/. /tests/; fi
+if [ -d /tmp/tb/solution ]; then cp -a /tmp/tb/solution/. /solution/; fi
 python3 -m ensurepip --user >/tmp/ensurepip.log 2>&1 || true
 python3 -m pip install --user pytest==8.4.1 >/tmp/pip-pytest.log 2>&1 || true
 `;
 const verifyCommand = `
 set +e
-PATH="$HOME/.local/bin:$PATH" pytest /tests/test_outputs.py -rA
+if [ -x /tests/test.sh ] || [ -f /tests/test.sh ]; then
+  bash /tests/test.sh
+else
+  PATH="$HOME/.local/bin:$PATH" pytest /tests/test_outputs.py -rA
+fi
 code=$?
 if [ "$code" -eq 0 ]; then echo 1 > /logs/verifier/reward.txt; else echo 0 > /logs/verifier/reward.txt; fi
 exit "$code"

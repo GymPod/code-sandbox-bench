@@ -15,8 +15,18 @@ Included files:
 
 - `data/terminalbench_2026_03_05_smoke16.parquet`
 - `data/terminalbench_2026_03_05_smoke16.jsonl`
+- `data/swesmith_v4_smoke100.parquet`
+- `data/swesmith_v4_smoke100.jsonl`
 
 The JSONL mirror preserves `task_id`, `prompt`, `instruction`, and the `tar.gz+base64` task archive from the parquet row.
+
+The SWE-Smith smoke set was extracted from `~/Downloads/swesmith-v4_train_2026_05_15.parquet` with:
+
+```bash
+python scripts/extract_harbor_smoke.py --input ~/Downloads/swesmith-v4_train_2026_05_15.parquet --count 100 --strategy even --output-parquet data/swesmith_v4_smoke100.parquet --output-jsonl data/swesmith_v4_smoke100.jsonl
+```
+
+SWE-Smith rows include verifier scripts under `tests/test.sh` and solution artifacts under `solution/`. They also expect their task Docker image to provide `/testbed`, conda, and `/opt/verifier-venv`; the current generic `python:3.13` provider runs can load and invoke these tasks, but full SWE-Smith verification needs per-task Dockerfile/image support.
 
 ## Quick Start
 
