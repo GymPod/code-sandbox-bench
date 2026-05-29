@@ -1,0 +1,18 @@
+{
+  "provider": "daytona",
+  "runtime": "python:3.13",
+  "task_count": 1,
+  "passed": 0,
+  "estimated_cost_usd": 0.0010963581830499998,
+  "results": [
+    {
+      "task_id": "R_package_dependency_missing_medium",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 23.756407,
+      "estimated_cost_usd": 0.0010963581830499998,
+      "stdout_tail": ".py:546: in read_text\n    return PathBase.read_text(self, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/usr/local/lib/python3.13/pathlib/_abc.py:632: in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = PosixPath('/tmp/solution.txt'), mode = 'r', buffering = -1\nencoding = 'utf-8', errors = None, newline = None\n\n    def open(self, mode='r', buffering=-1, encoding=None,\n             errors=None, newline=None):\n        \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/solution.txt'\n\n/usr/local/lib/python3.13/pathlib/_local.py:537: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_solution_file_exists - AssertionError: ...\nFAILED ../tests/test_outputs.py::test_solution_file_format - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_solution_second_line - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_jsonlite_package_installed - FileNotFou...\nFAILED ../tests/test_outputs.py::test_jsonlite_test_script_runs - AssertionEr...\nFAILED ../tests/test_outputs.py::test_solution_reports_success - FileNotFound...\nFAILED ../tests/test_outputs.py::test_system_package_installed - FileNotFound...\nFAILED ../tests/test_outputs.py::test_correct_dependency_identified - FileNot...\n============================== 8 failed in 0.15s ===============================\n",
+      "stderr_tail": ""
+    }
+  ]
+}

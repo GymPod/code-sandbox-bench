@@ -1,0 +1,8 @@
+{
+  "provider": "vercel",
+  "profile": "terminalbench-smoke",
+  "runtime": "python3.13",
+  "vercel_snapshot_id": "snap_TkzxZLA3B7Jij3GonaqFkUFhSo2K",
+  "snapshot_status": "created",
+  "env": "VERCEL_SNAPSHOT_ID=snap_TkzxZLA3B7Jij3GonaqFkUFhSo2K"
+}

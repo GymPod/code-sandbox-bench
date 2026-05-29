@@ -1,0 +1,7 @@
+{
+  "provider": "modal",
+  "profile": "terminalbench-smoke",
+  "runtime": "python:3.13",
+  "modal_image_id": "im-PN0mo0YJNhDkPn6VWNCLz4",
+  "env": "MODAL_IMAGE_ID=im-PN0mo0YJNhDkPn6VWNCLz4"
+}

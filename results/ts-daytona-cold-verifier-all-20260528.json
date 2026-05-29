@@ -1,0 +1,282 @@
+{
+  "provider": "daytona",
+  "runtime": "python:3.13",
+  "task_count": 16,
+  "solve_enabled": false,
+  "passed": 0,
+  "estimated_cost_usd": 0.004819335159158649,
+  "results": [
+    {
+      "task_id": "R_package_dependency_missing_medium",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 6.360864500000001,
+      "estimated_cost_usd": 0.00029355389667500004,
+      "phases": {
+        "start_seconds": 1.5458232080000003,
+        "upload_seconds": 0.44864229200000044,
+        "prepare_seconds": 3.0948558329999996,
+        "instruction_write_seconds": 0.637046292,
+        "verify_seconds": 0.5363800419999998,
+        "stop_seconds": 0.09795858399999997
+      },
+      "stdout_tail": ".py:546: in read_text\n    return PathBase.read_text(self, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/usr/local/lib/python3.13/pathlib/_abc.py:632: in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = PosixPath('/tmp/solution.txt'), mode = 'r', buffering = -1\nencoding = 'utf-8', errors = None, newline = None\n\n    def open(self, mode='r', buffering=-1, encoding=None,\n             errors=None, newline=None):\n        \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/solution.txt'\n\n/usr/local/lib/python3.13/pathlib/_local.py:537: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_solution_file_exists - AssertionError: ...\nFAILED ../tests/test_outputs.py::test_solution_file_format - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_solution_second_line - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_jsonlite_package_installed - FileNotFou...\nFAILED ../tests/test_outputs.py::test_jsonlite_test_script_runs - AssertionEr...\nFAILED ../tests/test_outputs.py::test_solution_reports_success - FileNotFound...\nFAILED ../tests/test_outputs.py::test_system_package_installed - FileNotFound...\nFAILED ../tests/test_outputs.py::test_correct_dependency_identified - FileNot...\n============================== 8 failed in 0.15s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "Rscript_segfault_debugging_hard",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 7.337403040999999,
+      "estimated_cost_usd": 0.0003386211503421499,
+      "phases": {
+        "start_seconds": 2.52703475,
+        "upload_seconds": 0.22304308300000047,
+        "prepare_seconds": 3.3842984160000014,
+        "instruction_write_seconds": 0.7158956670000007,
+        "verify_seconds": 0.37129529100000036,
+        "stop_seconds": 0.11572587500000009
+      },
+      "stdout_tail": "1\nencoding = 'utf-8', errors = None, newline = None\n\n    def open(self, mode='r', buffering=-1, encoding=None,\n             errors=None, newline=None):\n        \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/fix_summary.txt'\n\n/usr/local/lib/python3.13/pathlib/_local.py:537: FileNotFoundError\n___________________________ test_correlate_r_exists ____________________________\n\n    def test_correlate_r_exists():\n        \"\"\"Test that correlate.R file exists and was potentially modified\"\"\"\n        r_script = Path(\"/workspace/correlate.R\")\n>       assert r_script.exists(), \"correlate.R file does not exist at /workspace/correlate.R\"\nE       AssertionError: correlate.R file does not exist at /workspace/correlate.R\nE       assert False\nE        +  where False = exists()\nE        +    where exists = PosixPath('/workspace/correlate.R').exists\n\n/tests/test_outputs.py:103: AssertionError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_fix_summary_exists - AssertionError: fi...\nFAILED ../tests/test_outputs.py::test_fix_summary_format - FileNotFoundError:...\nFAILED ../tests/test_outputs.py::test_fix_summary_fields_not_empty - FileNotF...\nFAILED ../tests/test_outputs.py::test_all_samples_process_successfully - Asse...\nFAILED ../tests/test_outputs.py::test_output_files_generated - AssertionError...\nFAILED ../tests/test_outputs.py::test_problematic_files_list_valid - FileNotF...\nFAILED ../tests/test_outputs.py::test_correlate_r_exists - AssertionError: co...\n============================== 7 failed in 0.08s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "Rscript_segfault_debugging_medium",
+      "passed": false,
+      "return_code": 2,
+      "elapsed_seconds": 5.719117666000002,
+      "estimated_cost_usd": 0.00026393728028590007,
+      "phases": {
+        "start_seconds": 1.366585583,
+        "upload_seconds": 0.21580629200000112,
+        "prepare_seconds": 3.0626874580000023,
+        "instruction_write_seconds": 0.5992808750000004,
+        "verify_seconds": 0.37779241600000024,
+        "stop_seconds": 0.0967904579999995
+      },
+      "stdout_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.13.13, pytest-8.4.1, pluggy-1.6.0\nrootdir: /tests\ncollected 0 items / 1 error\n\n==================================== ERRORS ====================================\n_______________________ ERROR collecting test_outputs.py _______________________\nImportError while importing test module '/tests/test_outputs.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/usr/local/lib/python3.13/importlib/__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/tests/test_outputs.py:5: in <module>\n    import pandas as pd\nE   ModuleNotFoundError: No module named 'pandas'\n=========================== short test summary info ============================\nERROR ../tests/test_outputs.py\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n=============================== 1 error in 0.07s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "a_b_testing_models_hard",
+      "passed": false,
+      "return_code": 2,
+      "elapsed_seconds": 6.855999334,
+      "estimated_cost_usd": 0.0003164043692641,
+      "phases": {
+        "start_seconds": 1.951890875000001,
+        "upload_seconds": 0.24441033400000015,
+        "prepare_seconds": 3.3971649159999977,
+        "instruction_write_seconds": 0.653872292,
+        "verify_seconds": 0.38655945799999974,
+        "stop_seconds": 0.2220128330000007
+      },
+      "stdout_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.13.13, pytest-8.4.1, pluggy-1.6.0\nrootdir: /tests\ncollected 0 items / 1 error\n\n==================================== ERRORS ====================================\n_______________________ ERROR collecting test_outputs.py _______________________\nImportError while importing test module '/tests/test_outputs.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/usr/local/lib/python3.13/importlib/__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/tests/test_outputs.py:5: in <module>\n    import pandas as pd\nE   ModuleNotFoundError: No module named 'pandas'\n=========================== short test summary info ============================\nERROR ../tests/test_outputs.py\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n=============================== 1 error in 0.06s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "a_b_testing_models_medium",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 6.646709124999997,
+      "estimated_cost_usd": 0.00030674562611874987,
+      "phases": {
+        "start_seconds": 2.080909041999999,
+        "upload_seconds": 0.2628357079999987,
+        "prepare_seconds": 3.145041042000001,
+        "instruction_write_seconds": 0.6362268750000003,
+        "verify_seconds": 0.4141803330000039,
+        "stop_seconds": 0.10739083300000493
+      },
+      "stdout_tail": "________________________ test_winner_logic_consistency _________________________\n\n    def test_winner_logic_consistency():\n        \"\"\"Test that winner determination is consistent with statistical significance\"\"\"\n        results_path = Path(\"/workspace/results.json\")\n>       with open(results_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/results.json'\n\n/tests/test_outputs.py:109: FileNotFoundError\n_________________________ test_significance_threshold __________________________\n\n    def test_significance_threshold():\n        \"\"\"Test that statistical significance is based on p < 0.05\"\"\"\n        results_path = Path(\"/workspace/results.json\")\n>       with open(results_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/results.json'\n\n/tests/test_outputs.py:130: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_results_file_exists - AssertionError: r...\nFAILED ../tests/test_outputs.py::test_results_valid_json - FileNotFoundError:...\nFAILED ../tests/test_outputs.py::test_results_has_required_fields - FileNotFo...\nFAILED ../tests/test_outputs.py::test_winner_field_valid - FileNotFoundError:...\nFAILED ../tests/test_outputs.py::test_auc_scores_valid_range - FileNotFoundEr...\nFAILED ../tests/test_outputs.py::test_auc_scores_properly_rounded - FileNotFo...\nFAILED ../tests/test_outputs.py::test_p_value_valid_range - FileNotFoundError...\nFAILED ../tests/test_outputs.py::test_p_value_properly_rounded - FileNotFound...\nFAILED ../tests/test_outputs.py::test_statistically_significant_is_boolean - ...\nFAILED ../tests/test_outputs.py::test_winner_logic_consistency - FileNotFound...\nFAILED ../tests/test_outputs.py::test_significance_threshold - FileNotFoundEr...\n============================== 11 failed in 0.04s ==============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "a_star_pathfinding_hard",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 6.547216208999998,
+      "estimated_cost_usd": 0.0003021540280453499,
+      "phases": {
+        "start_seconds": 2.060773374999997,
+        "upload_seconds": 0.23217175000000134,
+        "prepare_seconds": 3.101657417000002,
+        "instruction_write_seconds": 0.6753008330000011,
+        "verify_seconds": 0.3602713750000039,
+        "stop_seconds": 0.11689683299999888
+      },
+      "stdout_tail": "\"\"\n        map_path = Path(\"/workspace/warehouse_map.json\")\n        output_path = Path(\"/workspace/optimal_route.json\")\n    \n>       with open(map_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/warehouse_map.json'\n\n/tests/test_outputs.py:170: FileNotFoundError\n________________________ test_no_blocked_cells_in_path _________________________\n\n    def test_no_blocked_cells_in_path():\n        \"\"\"Test that the path doesn't go through blocked cells\"\"\"\n        map_path = Path(\"/workspace/warehouse_map.json\")\n        output_path = Path(\"/workspace/optimal_route.json\")\n    \n>       with open(map_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/warehouse_map.json'\n\n/tests/test_outputs.py:191: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_output_file_exists - AssertionError: op...\nFAILED ../tests/test_outputs.py::test_output_file_valid_json - FileNotFoundEr...\nFAILED ../tests/test_outputs.py::test_output_has_required_fields - FileNotFou...\nFAILED ../tests/test_outputs.py::test_total_cost_is_valid - FileNotFoundError...\nFAILED ../tests/test_outputs.py::test_path_is_valid_list - FileNotFoundError:...\nFAILED ../tests/test_outputs.py::test_path_coordinates_in_bounds - FileNotFou...\nFAILED ../tests/test_outputs.py::test_path_movements_are_adjacent - FileNotFo...\nFAILED ../tests/test_outputs.py::test_path_starts_at_charging_station - FileN...\nFAILED ../tests/test_outputs.py::test_path_ends_at_charging_station - FileNot...\nFAILED ../tests/test_outputs.py::test_all_pickups_visited - FileNotFoundError...\nFAILED ../tests/test_outputs.py::test_visit_order_is_valid - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_no_blocked_cells_in_path - FileNotFound...\n============================== 12 failed in 0.06s ==============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "a_star_pathfinding_medium",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 6.690573292000001,
+      "estimated_cost_usd": 0.0003087699574258,
+      "phases": {
+        "start_seconds": 2.2566867090000016,
+        "upload_seconds": 0.23403537499999946,
+        "prepare_seconds": 3.037364957999998,
+        "instruction_write_seconds": 0.7010838330000042,
+        "verify_seconds": 0.3696118329999954,
+        "stop_seconds": 0.09167729099999997
+      },
+      "stdout_tail": "alid():\n        \"\"\"Test that consecutive moves are adjacent (4-directional movement only)\"\"\"\n        solution_path = Path(\"/workspace/path_solution.json\")\n>       with open(solution_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/path_solution.json'\n\n/tests/test_outputs.py:149: FileNotFoundError\n___________________________ test_path_is_continuous ____________________________\n\n    def test_path_is_continuous():\n        \"\"\"Test that the path has no gaps (each position connects to the next)\"\"\"\n        solution_path = Path(\"/workspace/path_solution.json\")\n>       with open(solution_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/path_solution.json'\n\n/tests/test_outputs.py:167: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_solution_file_exists - AssertionError: ...\nFAILED ../tests/test_outputs.py::test_solution_valid_json - FileNotFoundError...\nFAILED ../tests/test_outputs.py::test_solution_has_required_fields - FileNotF...\nFAILED ../tests/test_outputs.py::test_path_coordinates_format - FileNotFoundE...\nFAILED ../tests/test_outputs.py::test_path_length_matches_coordinates - FileN...\nFAILED ../tests/test_outputs.py::test_path_cost_matches_length - FileNotFound...\nFAILED ../tests/test_outputs.py::test_path_starts_at_start_position - FileNot...\nFAILED ../tests/test_outputs.py::test_path_ends_at_goal_position - FileNotFou...\nFAILED ../tests/test_outputs.py::test_path_coordinates_within_bounds - FileNo...\nFAILED ../tests/test_outputs.py::test_path_avoids_obstacles - FileNotFoundErr...\nFAILED ../tests/test_outputs.py::test_path_moves_are_valid - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_path_is_continuous - FileNotFoundError:...\n============================== 12 failed in 0.05s ==============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "aar_android_library_packaging_hard",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 7.0997775830000025,
+      "estimated_cost_usd": 0.0003276547354554501,
+      "phases": {
+        "start_seconds": 2.3821506660000016,
+        "upload_seconds": 0.2657537919999959,
+        "prepare_seconds": 3.050316874999997,
+        "instruction_write_seconds": 0.6809479589999974,
+        "verify_seconds": 0.5680026660000003,
+        "stop_seconds": 0.15254279099999984
+      },
+      "stdout_tail": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = PosixPath('/tmp/aar_info.txt'), mode = 'r', buffering = -1\nencoding = 'utf-8', errors = None, newline = None\n\n    def open(self, mode='r', buffering=-1, encoding=None,\n             errors=None, newline=None):\n        \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/aar_info.txt'\n\n/usr/local/lib/python3.13/pathlib/_local.py:537: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_aar_info_file_exists - AssertionError: ...\nFAILED ../tests/test_outputs.py::test_aar_info_file_format - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_aar_file_exists - FileNotFoundError: [E...\nFAILED ../tests/test_outputs.py::test_aar_file_extension - FileNotFoundError:...\nFAILED ../tests/test_outputs.py::test_aar_file_minimum_size - FileNotFoundErr...\nFAILED ../tests/test_outputs.py::test_sha256_checksum_matches - FileNotFoundE...\nFAILED ../tests/test_outputs.py::test_aar_is_valid_zip - FileNotFoundError: [...\nFAILED ../tests/test_outputs.py::test_aar_contains_manifest - FileNotFoundErr...\nFAILED ../tests/test_outputs.py::test_aar_contains_classes_jar - FileNotFound...\nFAILED ../tests/test_outputs.py::test_classes_jar_is_valid - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_classes_jar_contains_compiled_classes\nFAILED ../tests/test_outputs.py::test_manifest_contains_package - FileNotFoun...\n============================== 12 failed in 0.22s ==============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "aar_android_library_packaging_medium",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 6.816144832999998,
+      "estimated_cost_usd": 0.0003145650840429499,
+      "phases": {
+        "start_seconds": 2.1721303750000005,
+        "upload_seconds": 0.25515333300000204,
+        "prepare_seconds": 3.1504688749999987,
+        "instruction_write_seconds": 0.7142475419999973,
+        "verify_seconds": 0.3427216249999983,
+        "stop_seconds": 0.18133995799999683
+      },
+      "stdout_tail": "en(solution_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/solution.json'\n\n/tests/test_outputs.py:61: FileNotFoundError\n__________________________ test_aar_path_is_absolute ___________________________\n\n    def test_aar_path_is_absolute():\n        \"\"\"Test that the aar_path is an absolute path\"\"\"\n        solution_path = Path(\"/workspace/solution.json\")\n>       with open(solution_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/solution.json'\n\n/tests/test_outputs.py:77: FileNotFoundError\n_________________________ test_aar_file_has_extension __________________________\n\n    def test_aar_file_has_extension():\n        \"\"\"Test that the AAR file has .aar extension\"\"\"\n        solution_path = Path(\"/workspace/solution.json\")\n>       with open(solution_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/solution.json'\n\n/tests/test_outputs.py:86: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_solution_json_exists - AssertionError: ...\nFAILED ../tests/test_outputs.py::test_solution_json_valid - FileNotFoundError...\nFAILED ../tests/test_outputs.py::test_solution_json_has_required_fields - Fil...\nFAILED ../tests/test_outputs.py::test_build_status_is_success - FileNotFoundE...\nFAILED ../tests/test_outputs.py::test_aar_file_exists - FileNotFoundError: [E...\nFAILED ../tests/test_outputs.py::test_aar_file_size - FileNotFoundError: [Err...\nFAILED ../tests/test_outputs.py::test_aar_file_is_valid_zip - FileNotFoundErr...\nFAILED ../tests/test_outputs.py::test_aar_path_is_absolute - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_aar_file_has_extension - FileNotFoundEr...\n============================== 9 failed in 0.03s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "abc_synthesis_optimization_hard",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 5.603884166999997,
+      "estimated_cost_usd": 0.00025861925430704984,
+      "phases": {
+        "start_seconds": 1.1065325840000004,
+        "upload_seconds": 0.2408735830000005,
+        "prepare_seconds": 3.0206707079999977,
+        "instruction_write_seconds": 0.6548999170000025,
+        "verify_seconds": 0.4825150409999915,
+        "stop_seconds": 0.09832441699999618
+      },
+      "stdout_tail": " _ _ _ _ _ _ \n/usr/local/lib/python3.13/pathlib/_local.py:546: in read_text\n    return PathBase.read_text(self, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/usr/local/lib/python3.13/pathlib/_abc.py:632: in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = PosixPath('/workspace/circuit_analysis.txt'), mode = 'r', buffering = -1\nencoding = 'utf-8', errors = None, newline = None\n\n    def open(self, mode='r', buffering=-1, encoding=None,\n             errors=None, newline=None):\n        \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/circuit_analysis.txt'\n\n/usr/local/lib/python3.13/pathlib/_local.py:537: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_analysis_file_exists - AssertionError: ...\nFAILED ../tests/test_outputs.py::test_analysis_file_format - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_required_keys_present - FileNotFoundErr...\nFAILED ../tests/test_outputs.py::test_circuit_files_exist - FileNotFoundError...\nFAILED ../tests/test_outputs.py::test_scores_are_valid_floats - FileNotFoundE...\nFAILED ../tests/test_outputs.py::test_best_score_less_than_or_equal_worst_score\nFAILED ../tests/test_outputs.py::test_complexity_scores_are_correct - FileNot...\n============================== 7 failed in 0.13s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "abc_synthesis_optimization_medium",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 6.569229875000005,
+      "estimated_cost_usd": 0.0003031699587312502,
+      "phases": {
+        "start_seconds": 1.9176614169999957,
+        "upload_seconds": 0.34358424999999987,
+        "prepare_seconds": 3.1447364579999992,
+        "instruction_write_seconds": 0.6169178329999995,
+        "verify_seconds": 0.4530440830000007,
+        "stop_seconds": 0.09321795799999381
+      },
+      "stdout_tail": " \n/usr/local/lib/python3.13/pathlib/_local.py:546: in read_text\n    return PathBase.read_text(self, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/usr/local/lib/python3.13/pathlib/_abc.py:632: in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = PosixPath('/workspace/output/verification_result.txt'), mode = 'r'\nbuffering = -1, encoding = 'utf-8', errors = None, newline = None\n\n    def open(self, mode='r', buffering=-1, encoding=None,\n             errors=None, newline=None):\n        \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/output/verification_result.txt'\n\n/usr/local/lib/python3.13/pathlib/_local.py:537: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_verification_result_file_exists - Asser...\nFAILED ../tests/test_outputs.py::test_verification_result_not_empty - FileNot...\nFAILED ../tests/test_outputs.py::test_verification_result_has_two_lines - Fil...\nFAILED ../tests/test_outputs.py::test_verification_result_first_line_format\nFAILED ../tests/test_outputs.py::test_verification_result_second_line_format\nFAILED ../tests/test_outputs.py::test_verification_result_values_are_valid - ...\nFAILED ../tests/test_outputs.py::test_verification_used_abc_tool - FileNotFou...\n============================== 7 failed in 0.13s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "abi_compliance_checker_tool_hard",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 5.509322749999992,
+      "estimated_cost_usd": 0.0002542552449124996,
+      "phases": {
+        "start_seconds": 1.1334117079999997,
+        "upload_seconds": 0.19754887499999313,
+        "prepare_seconds": 2.9795361660000053,
+        "instruction_write_seconds": 0.6623553329999995,
+        "verify_seconds": 0.4354572919999919,
+        "stop_seconds": 0.10094491700000072
+      },
+      "stdout_tail": "_ _ \n/usr/local/lib/python3.13/pathlib/_local.py:546: in read_text\n    return PathBase.read_text(self, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/usr/local/lib/python3.13/pathlib/_abc.py:632: in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = PosixPath('/workspace/compatibility_report.txt'), mode = 'r'\nbuffering = -1, encoding = 'utf-8', errors = None, newline = None\n\n    def open(self, mode='r', buffering=-1, encoding=None,\n             errors=None, newline=None):\n        \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/compatibility_report.txt'\n\n/usr/local/lib/python3.13/pathlib/_local.py:537: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_report_file_exists - AssertionError: Co...\nFAILED ../tests/test_outputs.py::test_report_has_three_lines - FileNotFoundEr...\nFAILED ../tests/test_outputs.py::test_first_line_is_pass_or_fail - FileNotFou...\nFAILED ../tests/test_outputs.py::test_second_line_is_integer - FileNotFoundEr...\nFAILED ../tests/test_outputs.py::test_third_line_is_integer - FileNotFoundErr...\nFAILED ../tests/test_outputs.py::test_compatibility_analysis_accuracy - FileN...\nFAILED ../tests/test_outputs.py::test_logical_consistency - FileNotFoundError...\n============================== 7 failed in 0.13s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "abi_compliance_checker_tool_medium",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 6.959402541000003,
+      "estimated_cost_usd": 0.0003211764272671501,
+      "phases": {
+        "start_seconds": 2.421119957999996,
+        "upload_seconds": 0.19914966599999753,
+        "prepare_seconds": 3.289878958000001,
+        "instruction_write_seconds": 0.6217414169999974,
+        "verify_seconds": 0.30971100000001023,
+        "stop_seconds": 0.11774495900000329
+      },
+      "stdout_tail": "nteger\"\"\"\n        analysis_path = Path(\"/home/agent/analysis.json\")\n>       with open(analysis_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/home/agent/analysis.json'\n\n/tests/test_outputs.py:42: FileNotFoundError\n______________________ test_breaking_changes_non_negative ______________________\n\n    def test_breaking_changes_non_negative():\n        \"\"\"Test that the 'breaking_changes' count is non-negative\"\"\"\n        analysis_path = Path(\"/home/agent/analysis.json\")\n>       with open(analysis_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/home/agent/analysis.json'\n\n/tests/test_outputs.py:50: FileNotFoundError\n___________________ test_compatibility_analysis_correctness ____________________\n\n    def test_compatibility_analysis_correctness():\n        \"\"\"Test that the compatibility analysis is correct based on actual library comparison\"\"\"\n        analysis_path = Path(\"/home/agent/analysis.json\")\n>       with open(analysis_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/home/agent/analysis.json'\n\n/tests/test_outputs.py:58: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_analysis_file_exists - AssertionError: ...\nFAILED ../tests/test_outputs.py::test_analysis_file_valid_json - FileNotFound...\nFAILED ../tests/test_outputs.py::test_analysis_file_has_required_fields - Fil...\nFAILED ../tests/test_outputs.py::test_compatible_field_is_boolean - FileNotFo...\nFAILED ../tests/test_outputs.py::test_breaking_changes_field_is_integer - Fil...\nFAILED ../tests/test_outputs.py::test_breaking_changes_non_negative - FileNot...\nFAILED ../tests/test_outputs.py::test_compatibility_analysis_correctness - Fi...\n============================== 7 failed in 0.03s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "acl2_induction_scheme_selection_hard",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 7.103349084000001,
+      "estimated_cost_usd": 0.00032781956022660005,
+      "phases": {
+        "start_seconds": 2.419592249999987,
+        "upload_seconds": 0.19790341700000863,
+        "prepare_seconds": 3.1474625419999938,
+        "instruction_write_seconds": 0.7554325829999871,
+        "verify_seconds": 0.4787281250000087,
+        "stop_seconds": 0.10403779199998826
+      },
+      "stdout_tail": "are_sorted():\n        \"\"\"Test that mutual_group lists are sorted alphabetically\"\"\"\n        analysis_path = Path(\"/workspace/analysis.json\")\n>       with open(analysis_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/analysis.json'\n\n/tests/test_outputs.py:140: FileNotFoundError\n________________ test_non_recursive_functions_have_empty_lists _________________\n\n    def test_non_recursive_functions_have_empty_lists():\n        \"\"\"Test that non-recursive functions have empty decreasing_args and mutual_group\"\"\"\n        analysis_path = Path(\"/workspace/analysis.json\")\n>       with open(analysis_path, 'r') as f:\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/workspace/analysis.json'\n\n/tests/test_outputs.py:154: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_analysis_file_exists - AssertionError: ...\nFAILED ../tests/test_outputs.py::test_analysis_valid_json - FileNotFoundError...\nFAILED ../tests/test_outputs.py::test_analysis_is_dict - FileNotFoundError: [...\nFAILED ../tests/test_outputs.py::test_all_functions_analyzed - FileNotFoundEr...\nFAILED ../tests/test_outputs.py::test_each_function_has_required_fields - Fil...\nFAILED ../tests/test_outputs.py::test_recursion_type_values - FileNotFoundErr...\nFAILED ../tests/test_outputs.py::test_decreasing_args_is_list - FileNotFoundE...\nFAILED ../tests/test_outputs.py::test_mutual_group_is_list - FileNotFoundErro...\nFAILED ../tests/test_outputs.py::test_mutual_recursion_consistency - FileNotF...\nFAILED ../tests/test_outputs.py::test_mutual_groups_are_symmetric - FileNotFo...\nFAILED ../tests/test_outputs.py::test_mutual_groups_are_sorted - FileNotFound...\nFAILED ../tests/test_outputs.py::test_non_recursive_functions_have_empty_lists\n============================== 12 failed in 0.05s ==============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "acl2_induction_scheme_selection_medium",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 6.942588917000001,
+      "estimated_cost_usd": 0.00032040047851955003,
+      "phases": {
+        "start_seconds": 2.070990374999994,
+        "upload_seconds": 0.2607496250000113,
+        "prepare_seconds": 3.3230637080000016,
+        "instruction_write_seconds": 0.6978611249999959,
+        "verify_seconds": 0.4843611660000024,
+        "stop_seconds": 0.10550620799999161
+      },
+      "stdout_tail": "test_outputs.py:81: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n/usr/local/lib/python3.13/pathlib/_local.py:546: in read_text\n    return PathBase.read_text(self, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n/usr/local/lib/python3.13/pathlib/_abc.py:632: in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nself = PosixPath('/tmp/recursion_patterns.txt'), mode = 'r', buffering = -1\nencoding = 'utf-8', errors = None, newline = None\n\n    def open(self, mode='r', buffering=-1, encoding=None,\n             errors=None, newline=None):\n        \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/recursion_patterns.txt'\n\n/usr/local/lib/python3.13/pathlib/_local.py:537: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_output_file_exists - AssertionError: Ou...\nFAILED ../tests/test_outputs.py::test_output_not_empty - FileNotFoundError: [...\nFAILED ../tests/test_outputs.py::test_output_format - FileNotFoundError: [Err...\nFAILED ../tests/test_outputs.py::test_functions_count - FileNotFoundError: [E...\nFAILED ../tests/test_outputs.py::test_pattern_classifications - FileNotFoundE...\nFAILED ../tests/test_outputs.py::test_unique_function_names - FileNotFoundErr...\n============================== 6 failed in 0.11s ===============================\n",
+      "stderr_tail": ""
+    },
+    {
+      "task_id": "aclocal_macro_not_found_hard",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 5.666047833999997,
+      "estimated_cost_usd": 0.00026148810753909985,
+      "phases": {
+        "start_seconds": 1.236995584000004,
+        "upload_seconds": 0.21498845900000016,
+        "prepare_seconds": 2.991106667,
+        "instruction_write_seconds": 0.7095084159999969,
+        "verify_seconds": 0.416294167,
+        "stop_seconds": 0.09711283399999956
+      },
+      "stdout_tail": "_____ test_makefile_in_generated __________________________\n\n    def test_makefile_in_generated():\n        \"\"\"Test that Makefile.in was generated from Makefile.am\"\"\"\n        makefile_in = Path(\"/workspace/legacy-app/Makefile.in\")\n>       assert makefile_in.exists(), \"Makefile.in was not generated by automake\"\nE       AssertionError: Makefile.in was not generated by automake\nE       assert False\nE        +  where False = exists()\nE        +    where exists = PosixPath('/workspace/legacy-app/Makefile.in').exists\n\n/tests/test_outputs.py:75: AssertionError\n__________________________ test_aclocal_m4_generated ___________________________\n\n    def test_aclocal_m4_generated():\n        \"\"\"Test that aclocal.m4 was generated with proper macros\"\"\"\n        aclocal_m4 = Path(\"/workspace/legacy-app/aclocal.m4\")\n>       assert aclocal_m4.exists(), \"aclocal.m4 was not generated\"\nE       AssertionError: aclocal.m4 was not generated\nE       assert False\nE        +  where False = exists()\nE        +    where exists = PosixPath('/workspace/legacy-app/aclocal.m4').exists\n\n/tests/test_outputs.py:80: AssertionError\n=========================== short test summary info ============================\nFAILED ../tests/test_outputs.py::test_fix_script_exists - AssertionError: fix...\nFAILED ../tests/test_outputs.py::test_fix_script_executable - FileNotFoundErr...\nFAILED ../tests/test_outputs.py::test_fix_script_runs_successfully - Assertio...\nFAILED ../tests/test_outputs.py::test_autoreconf_runs_successfully - subproce...\nFAILED ../tests/test_outputs.py::test_configure_script_exists - AssertionErro...\nFAILED ../tests/test_outputs.py::test_configure_script_executable - Assertion...\nFAILED ../tests/test_outputs.py::test_no_macro_errors_in_autoreconf - subproc...\nFAILED ../tests/test_outputs.py::test_makefile_in_generated - AssertionError:...\nFAILED ../tests/test_outputs.py::test_aclocal_m4_generated - AssertionError: ...\n============================== 9 failed in 0.09s ===============================\n",
+      "stderr_tail": ""
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "provider": "local",
+  "runtime": "python3.13",
+  "task_count": 1,
+  "solve_enabled": true,
+  "passed": 0,
+  "estimated_cost_usd": 0,
+  "results": [
+    {
+      "task_id": "R_package_dependency_missing_medium",
+      "passed": false,
+      "return_code": 1,
+      "elapsed_seconds": 17.610316041999997,
+      "estimated_cost_usd": 0,
+      "stdout_tail": "    \"\"\"\n        Open the file pointed to by this path and return a file object, as\n        the built-in open() function does.\n        \"\"\"\n        if \"b\" not in mode:\n            encoding = io.text_encoding(encoding)\n>       return io.open(self, mode, buffering, encoding, errors, newline)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/solution.txt'\n\n/Users/jaylast/.local/share/mise/installs/python/3.12.10/lib/python3.12/pathlib.py:1013: FileNotFoundError\n=========================== short test summary info ============================\nFAILED ../../../../../../../../var/folders/5b/ksg1d7wd68x7sh806b53n3w80000gq/T/code-sandbox-bench-ts-tI6OA4/tests/test_outputs.py::test_solution_file_exists\nFAILED ../../../../../../../../var/folders/5b/ksg1d7wd68x7sh806b53n3w80000gq/T/code-sandbox-bench-ts-tI6OA4/tests/test_outputs.py::test_solution_file_format\nFAILED ../../../../../../../../var/folders/5b/ksg1d7wd68x7sh806b53n3w80000gq/T/code-sandbox-bench-ts-tI6OA4/tests/test_outputs.py::test_solution_second_line\nFAILED ../../../../../../../../var/folders/5b/ksg1d7wd68x7sh806b53n3w80000gq/T/code-sandbox-bench-ts-tI6OA4/tests/test_outputs.py::test_jsonlite_package_installed\nFAILED ../../../../../../../../var/folders/5b/ksg1d7wd68x7sh806b53n3w80000gq/T/code-sandbox-bench-ts-tI6OA4/tests/test_outputs.py::test_jsonlite_test_script_runs\nFAILED ../../../../../../../../var/folders/5b/ksg1d7wd68x7sh806b53n3w80000gq/T/code-sandbox-bench-ts-tI6OA4/tests/test_outputs.py::test_solution_reports_success\nFAILED ../../../../../../../../var/folders/5b/ksg1d7wd68x7sh806b53n3w80000gq/T/code-sandbox-bench-ts-tI6OA4/tests/test_outputs.py::test_system_package_installed\nFAILED ../../../../../../../../var/folders/5b/ksg1d7wd68x7sh806b53n3w80000gq/T/code-sandbox-bench-ts-tI6OA4/tests/test_outputs.py::test_correct_dependency_identified\n============================== 8 failed in 0.28s ===============================\n",
+      "stderr_tail": "",
+      "solve_return_code": 0,
+      "solve_elapsed_seconds": 0.1562562080000025,
+      "solve_stdout_tail": "",
+      "solve_stderr_tail": ""
+    }
+  ]
+}

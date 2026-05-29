@@ -1,162 +1,86 @@
-# TerminalBench Provider Harness Report
+# TerminalBench Sandbox Provider Report
+
+Generated: 2026-05-29T17:34:41.214Z
 
 ## Scope
 
-This report covers the lightweight dogfood terminal harness and the 16-row TerminalBench smoke benchmark added in PR 1705. The harness supports:
+- Dataset: `data/terminalbench_2026_03_05_smoke16.jsonl` (16 tasks).
+- Verifier-only runs cover cold and warm startup for Vercel, Modal, and Daytona.
+- Solve runs cover warm/snapshot startup for all three providers using `scripts/openrouter_solver.sh` with `deepseek/deepseek-v4-flash` through OpenRouter.
+- Vercel warm uses snapshot `snap_TkzxZLA3B7Jij3GonaqFkUFhSo2K`; Modal warm uses image `im-PN0mo0YJNhDkPn6VWNCLz4`.
+- Daytona named snapshot creation returned `403 Forbidden` with the current API key, so Daytona warm uses the cached `terminalbench-smoke` image definition path rather than a named snapshot.
 
-- `local` execution for toy terminal repair tasks.
-- `vercel` / `vercel_sandbox` for toy tasks and TerminalBench smoke verifier runs.
-- `modal` and `daytona` in the verifier-only cold vs prepared-snapshot benchmark CLI.
+## Rollup
 
-The benchmark is intentionally verifier-only. It prepares a task workspace and runs `bash /tests/test.sh`, but it does not run a solver/model edit step. A `0/16` pass count is therefore expected for the 16 TerminalBench runs.
+provider | mode | kind | passed | total seconds | mean seconds | median seconds | p95 seconds | estimated provider cost
+--- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---:
+vercel | cold | verifier | 0/16 | 172.16 | 10.76 | 11.20 | 16.97 | $0.0163
+vercel | warm | verifier | 0/16 | 169.18 | 10.57 | 10.89 | 17.61 | $0.0160
+modal | cold | verifier | 0/16 | 117.44 | 7.34 | 6.98 | 8.70 | $0.0078
+modal | warm | verifier | 0/16 | 126.29 | 7.89 | 7.43 | 11.91 | $0.0084
+daytona | cold | verifier | 0/16 | 104.43 | 6.53 | 6.67 | 7.34 | $0.0048
+daytona | warm | verifier | 0/16 | 63.05 | 3.94 | 3.77 | 4.98 | $0.0029
+vercel | warm | solve | 9/16 | 1348.16 | 84.26 | 76.79 | 165.87 | $0.1276
+modal | warm | solve | 11/16 | 1448.34 | 90.52 | 77.92 | 181.65 | $0.0960
+daytona | warm | solve | 10/16 | 1544.11 | 96.51 | 84.63 | 243.60 | $0.0713
 
-## How The Tests Work
+## Mean Phase Seconds
 
-### Toy Harness Smoke
+provider | mode | kind | start | upload | prepare | instruction write | solve | verify | stop
+--- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---:
+vercel | cold | verifier | 0.22 | 4.62 | 0.95 | 2.07 | - | 0.86 | 2.04
+vercel | warm | verifier | 0.24 | 4.29 | 1.01 | 2.03 | - | 0.89 | 2.12
+modal | cold | verifier | 0.67 | 1.73 | 2.65 | 1.36 | - | 0.80 | 0.13
+modal | warm | verifier | 0.78 | 1.96 | 2.76 | 1.34 | - | 0.94 | 0.12
+daytona | cold | verifier | 1.92 | 0.25 | 3.15 | 0.67 | - | 0.42 | 0.12
+daytona | warm | verifier | 0.83 | 0.27 | 1.43 | 0.73 | - | 0.55 | 0.13
+vercel | warm | solve | 0.23 | 2.29 | 1.08 | 2.27 | 75.42 | 0.87 | 2.10
+modal | warm | solve | 0.66 | 1.66 | 2.67 | 1.52 | 82.89 | 0.87 | 0.25
+daytona | warm | solve | 0.87 | 0.29 | 1.44 | 0.78 | 92.20 | 0.80 | 0.13
 
-Command shape:
+## Warm Solve Per Task
 
-```bash
-PYTHONPATH=$(pwd) python -m autonomy.dogfood.terminal_harness --provider vercel --runtime python --task-source toy --timeout-seconds 120
-```
+task | vercel | modal | daytona
+--- | --- | --- | ---
+R_package_dependency_missing_medium | fail 114.21s $0.0108 | pass 44.43s $0.0029 | pass 164.22s $0.0076
+Rscript_segfault_debugging_hard | pass 103.80s $0.0098 | pass 118.71s $0.0079 | pass 107.79s $0.0050
+Rscript_segfault_debugging_medium | pass 43.94s $0.0042 | pass 56.40s $0.0037 | pass 56.31s $0.0026
+a_b_testing_models_hard | pass 71.20s $0.0067 | pass 51.21s $0.0034 | pass 46.07s $0.0021
+a_b_testing_models_medium | pass 34.17s $0.0032 | pass 79.85s $0.0053 | pass 68.67s $0.0032
+a_star_pathfinding_hard | fail 152.02s $0.0144 | fail 75.98s $0.0050 | fail 127.99s $0.0059
+a_star_pathfinding_medium | fail 54.24s $0.0051 | pass 97.38s $0.0065 | pass 46.86s $0.0022
+aar_android_library_packaging_hard | fail 50.62s $0.0048 | fail 101.72s $0.0067 | fail 105.27s $0.0049
+aar_android_library_packaging_medium | fail 95.25s $0.0090 | fail 181.55s $0.0120 | fail 76.26s $0.0035
+abc_synthesis_optimization_hard | pass 37.53s $0.0036 | pass 30.14s $0.0020 | pass 19.25s $0.0009
+abc_synthesis_optimization_medium | fail 66.60s $0.0063 | fail 143.64s $0.0095 | fail 87.32s $0.0040
+abi_compliance_checker_tool_hard | pass 34.16s $0.0032 | pass 33.04s $0.0022 | pass 81.94s $0.0038
+abi_compliance_checker_tool_medium | pass 82.38s $0.0078 | pass 63.32s $0.0042 | fail 102.88s $0.0047
+acl2_induction_scheme_selection_hard | pass 93.55s $0.0089 | pass 148.35s $0.0098 | pass 243.60s $0.0112
+acl2_induction_scheme_selection_medium | pass 148.62s $0.0141 | pass 40.97s $0.0027 | pass 132.08s $0.0061
+aclocal_macro_not_found_hard | fail 165.87s $0.0157 | fail 181.65s $0.0120 | fail 77.61s $0.0036
 
-This runs a tiny terminal-style repair task through the OpenRouter-compatible agent path. The agent receives a shell tool backed by the selected provider. For Vercel, the harness starts a sandbox, runs the agent's tool calls inside it, and then executes the verifier in the same sandbox.
+## Failed Warm Solve Tasks
 
-Observed result:
+- vercel: R_package_dependency_missing_medium, a_star_pathfinding_hard, a_star_pathfinding_medium, aar_android_library_packaging_hard, aar_android_library_packaging_medium, abc_synthesis_optimization_medium, aclocal_macro_not_found_hard
+- modal: a_star_pathfinding_hard, aar_android_library_packaging_hard, aar_android_library_packaging_medium, abc_synthesis_optimization_medium, aclocal_macro_not_found_hard
+- daytona: a_star_pathfinding_hard, aar_android_library_packaging_hard, aar_android_library_packaging_medium, abc_synthesis_optimization_medium, abi_compliance_checker_tool_medium, aclocal_macro_not_found_hard
 
-| Test | Provider | Result |
-| --- | --- | --- |
-| Toy Python repair | Vercel Sandbox | Passed |
+## Raw Artifacts
 
-### TerminalBench Smoke Benchmark
+- Vercel cold verifier: `results/ts-vercel-cold-verifier-all-20260528.json`
+- Vercel warm verifier: `results/ts-vercel-warm-verifier-all-20260528.json`
+- Modal cold verifier: `results/ts-modal-cold-verifier-all-20260528.json`
+- Modal warm verifier: `results/ts-modal-warm-verifier-all-20260528.json`
+- Daytona cold verifier: `results/ts-daytona-cold-verifier-all-20260528.json`
+- Daytona warm verifier: `results/ts-daytona-warm-verifier-all-20260528.json`
+- Vercel warm solve: `results/ts-vercel-warm-solve-all-20260528.json`
+- Modal warm solve: `results/ts-modal-warm-solve-all-20260528.json`
+- Daytona warm solve: `results/ts-daytona-warm-solve-all-20260528.json`
+- Vercel prewarm: `results/prewarm-vercel-terminalbench-20260528.json`
+- Modal prewarm: `results/prewarm-modal-terminalbench-20260528.json`
 
-Command used for the completed 16-task Vercel run:
+## Notes
 
-```bash
-PYTHONPATH=$(pwd) python -m autonomy.dogfood.vercel_terminalbench_benchmark --task-index all --timeout-seconds 180 --output /tmp/vercel-terminalbench-benchmark-all16.json
-```
-
-For each selected TerminalBench row, the benchmark runs three phases:
-
-| Phase | What It Does |
-| --- | --- |
-| Cold prepare + verifier | Starts a fresh provider sandbox, uploads the task workspace and tests, installs `pytest`, then runs `bash /tests/test.sh`. |
-| Snapshot prepare | Starts or builds a prepared environment with the task workspace and tests, then snapshots it. |
-| Warm verifier | Starts from the prepared snapshot and runs only `bash /tests/test.sh`. |
-
-Provider-specific snapshot behavior:
-
-| Provider | Snapshot Method |
-| --- | --- |
-| Vercel | Prepare a running Vercel sandbox, then call the Vercel snapshot API and restart from the returned snapshot ID. |
-| Modal | Prepare a running Modal sandbox, then snapshot its filesystem as a Modal image and restart from that image ID. |
-| Daytona | Build a named Daytona snapshot from an image spec that includes the task workspace, tests, and verifier dependencies. |
-
-### Local Verification
-
-The following local checks ran against the original slime PR implementation:
-
-| Check | Result | Notes |
-| --- | --- | --- |
-| `py_compile` on changed harness/provider/test files | Passed | Validates syntax/importability for the changed files. |
-| Focused pytest suite | Passed | `39 passed, 6 skipped, 1 warning`; skipped tests are Daytona live-provider tests without credentials. |
-| Pre-commit on changed files | Passed | Black, isort, ruff, autoflake, and repository file checks passed. |
-| Benchmark CLI help smoke | Passed | Confirms `--provider {vercel,vercel_sandbox,modal,daytona}` is exposed. |
-| Vercel one-task benchmark regression | Passed | Exercised the generalized provider benchmark path and cleaned up the Vercel snapshot. |
-| `make typecheck` | Failed baseline | Repo-wide mypy backlog: `1719 errors in 182 files`. |
-| `make test` | Failed baseline | Repo-wide failures: `48 failed, 1041 passed, 12 skipped, 192 errors`. |
-
-The standalone TypeScript harness was later run against Vercel, Modal, and Daytona from `code-sandbox-bench`.
-
-## Actual Vercel 16-Task Result
-
-| Mode | Passed | Estimated Upper-Bound Cost |
-| --- | ---: | ---: |
-| Cold prepare + verifier | 0/16 | $0.023947 |
-| Warm verifier from prepared snapshots | 0/16 | $0.009132 |
-| Snapshot prepare + warm verifier | 0/16 | $0.041493 |
-
-Interpretation:
-
-- Warm-only was cheaper than cold by about `$0.014815` for this run.
-- Including snapshot preparation made the one-shot warm path more expensive than cold by about `$0.017546`.
-- The run left no active Vercel sandboxes or retained Vercel snapshots after cleanup.
-
-## Actual Standalone TypeScript Results
-
-These runs used the standalone `ts/` harness against the bundled JSONL mirror of the 16-row TerminalBench smoke set. They are cold verifier-only runs: each task starts a sandbox, uploads/extracts task files, installs `pytest`, runs the verifier, records output tails, then stops or deletes the sandbox. They do not run a solver/model step, so `0/16` pass counts are expected.
-
-Commands:
-
-```bash
-cd ts && bun run bench --provider vercel --task-index all --runtime python3.13 --timeout-seconds 180 --concurrency 4 --output ../results/ts-vercel-sdk-all.json
-```
-
-```bash
-cd ts && bun run bench --provider modal --task-index all --runtime python:3.13 --timeout-seconds 180 --concurrency 4 --output ../results/ts-modal-all.json
-```
-
-```bash
-cd ts && bun run bench --provider daytona --task-index all --runtime python:3.13 --timeout-seconds 180 --concurrency 2 --output ../results/ts-daytona-all.json
-```
-
-Daytona was run with concurrency 2 because the account currently has a 10 GiB total memory limit and the default harness request is 4 GiB per sandbox. A previous concurrency-4 attempt was rejected by Daytona before completion; the two sandboxes created before that rejection were deleted.
-
-| Provider | SDK/Runtime | Concurrency | Passed | Total Wall Seconds | Avg Seconds / Task | Estimated Cost |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Vercel Sandbox | `@vercel/sandbox`, `python3.13` | 4 | 0/16 | 111.12 | 6.94 | $0.010529 |
-| Modal | `modal`, `python:3.13` | 4 | 0/16 | 130.75 | 8.17 | $0.008669 |
-| Daytona | `@daytona/sdk`, `python:3.13` | 2 | 0/16 | 86.66 | 5.42 | $0.003999 |
-
-Cleanup checks:
-
-| Provider | Cleanup Result |
-| --- | --- |
-| Vercel Sandbox | `sandbox list` showed no active sandboxes after the SDK all-16 run. |
-| Daytona | Daytona SDK `list()` returned an empty sandbox list after the all-16 run. |
-| Modal | Each task calls `Sandbox.terminate()` in the provider `finally` path. |
-
-## Vendor Pricing Model
-
-Pricing was checked against public vendor pages on May 18, 2026.
-
-| Provider | Rates Used In Benchmark |
-| --- | --- |
-| Vercel Sandbox | Active CPU `$0.128/vCPU-hour`, memory `$0.0212/GB-hour`, creation `$0.60/1M`, storage `$0.08/GB-month` from [Vercel pricing](https://vercel.com/pricing). |
-| Modal Sandbox + Notebooks | CPU `$0.00003942/physical-core-second`, memory `$0.00000672/GiB-second`; Modal states one physical core is 2 vCPU equivalent on [Modal pricing](https://modal.com/pricing). |
-| Daytona | CPU `$0.00001400/vCPU-second`, memory `$0.00000450/GiB-second`, storage `$0.00000003/GiB-second` after 5 GB free from [Daytona pricing](https://www.daytona.io/pricing). |
-
-Important assumptions:
-
-- The harness records wall-clock phase duration and treats it as an upper bound for active CPU.
-- Vercel bills active CPU separately from provisioned memory; the benchmark cannot see exact active CPU seconds from the CLI.
-- Modal uses physical cores. The comparison maps `2 vCPU` to `1 physical core`.
-- Daytona storage estimate assumes `10 GiB` disk with `5 GiB` billable after the free allowance.
-- Network, snapshot storage retention beyond the run, provider credits, region multipliers, and volume discounts are excluded.
-
-## Side-By-Side Cost Comparison
-
-The original table below applies measured Vercel phase durations from the slime PR benchmark to each vendor's public rates. This remains a normalized cold/warm/snapshot model. The standalone TypeScript table above is the live side-by-side cold verifier measurement across all three providers.
-
-Measured aggregate phase durations inferred from the completed Vercel benchmark:
-
-| Phase | Total Seconds | Avg Seconds / Task |
-| --- | ---: | ---: |
-| Cold prepare + verifier | 252.86 | 15.80 |
-| Warm verifier | 96.36 | 6.02 |
-| Snapshot prepare | 341.74 | 21.36 |
-
-Normalized cost estimate for all 16 tasks:
-
-| Provider | Cold | Warm Only | Snapshot Prepare | Snapshot Prepare + Warm |
-| --- | ---: | ---: | ---: | ---: |
-| Vercel Sandbox | $0.023947 | $0.009132 | $0.032361 | $0.041493 |
-| Modal | $0.016765 | $0.006389 | $0.022657 | $0.029046 |
-| Daytona | $0.011669 | $0.004447 | $0.015771 | $0.020218 |
-
-Updated takeaways:
-
-- On this verifier-only workload, warm starts were materially cheaper than cold runs in the original Vercel snapshot experiment if snapshots already existed.
-- Snapshot preparation dominates one-shot warm cost. Reusing snapshots across multiple verifier or solver attempts is where warm starts become useful.
-- The live TypeScript cold verifier run measured Daytona as the lowest estimated cost, followed by Modal, then Vercel.
-- The Vercel SDK run was materially faster and cheaper than the earlier Vercel CLI run because it avoids CLI process overhead in each command.
+- Verifier-only runs are expected to fail task tests because they only unpack and verify the initial task state. They are useful for launch/setup/upload/verify latency and provider cost.
+- Cost estimates are harness estimates based on configured provider rates and measured elapsed time; they do not include OpenRouter model spend.
+- The OpenRouter solver is intentionally simple and stores only output tails. Its pass rate is a sandbox-plus-solver smoke signal, not a benchmark of maximum attainable task accuracy.

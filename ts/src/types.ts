@@ -22,6 +22,14 @@ export type BenchArgs = {
   taskIndex: string;
   runtime: string;
   timeoutSeconds: number;
+  solveTimeoutSeconds: number;
+  solveCommand?: string;
+  solveCommandFile?: string;
+  forwardEnv: string[];
+  prewarmProfile?: string;
+  vercelSnapshotId?: string;
+  modalImageId?: string;
+  daytonaSnapshot?: string;
   concurrency: number;
   cpu: number;
   memoryGb: number;

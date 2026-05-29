@@ -1,0 +1,23 @@
+{
+  "provider": "daytona",
+  "runtime": "python:3.13",
+  "task_count": 1,
+  "solve_enabled": true,
+  "passed": 1,
+  "estimated_cost_usd": 0.00960625550813045,
+  "results": [
+    {
+      "task_id": "R_package_dependency_missing_medium",
+      "passed": true,
+      "return_code": 0,
+      "elapsed_seconds": 208.152882083,
+      "estimated_cost_usd": 0.00960625550813045,
+      "stdout_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.13.13, pytest-8.4.1, pluggy-1.6.0\nrootdir: /tests\ncollected 8 items\n\n../tests/test_outputs.py ........                                        [100%]\n\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED ../tests/test_outputs.py::test_solution_file_exists\nPASSED ../tests/test_outputs.py::test_solution_file_format\nPASSED ../tests/test_outputs.py::test_solution_second_line\nPASSED ../tests/test_outputs.py::test_jsonlite_package_installed\nPASSED ../tests/test_outputs.py::test_jsonlite_test_script_runs\nPASSED ../tests/test_outputs.py::test_solution_reports_success\nPASSED ../tests/test_outputs.py::test_system_package_installed\nPASSED ../tests/test_outputs.py::test_correct_dependency_identified\n============================== 8 passed in 0.28s ===============================\n",
+      "stderr_tail": "",
+      "solve_return_code": 0,
+      "solve_elapsed_seconds": 202.507734,
+      "solve_stdout_tail": "_Class_2.pem\nAdding debian:T-TeleSec_GlobalRoot_Class_3.pem\nAdding debian:TUBITAK_Kamu_SM_SSL_Kok_Sertifikasi_-_Surum_1.pem\nAdding debian:TWCA_CYBER_Root_CA.pem\nAdding debian:TWCA_Global_Root_CA.pem\nAdding debian:TWCA_Root_Certification_Authority.pem\nAdding debian:Telekom_Security_TLS_ECC_Root_2020.pem\nAdding debian:Telekom_Security_TLS_RSA_Root_2023.pem\nAdding debian:TeliaSonera_Root_CA_v1.pem\nAdding debian:Telia_Root_CA_v2.pem\nAdding debian:TrustAsia_Global_Root_CA_G3.pem\nAdding debian:TrustAsia_Global_Root_CA_G4.pem\nAdding debian:Trustwave_Global_Certification_Authority.pem\nAdding debian:Trustwave_Global_ECC_P256_Certification_Authority.pem\nAdding debian:Trustwave_Global_ECC_P384_Certification_Authority.pem\nAdding debian:TunTrust_Root_CA.pem\nAdding debian:UCA_Extended_Validation_Root.pem\nAdding debian:UCA_Global_G2_Root.pem\nAdding debian:USERTrust_ECC_Certification_Authority.pem\nAdding debian:USERTrust_RSA_Certification_Authority.pem\nAdding debian:XRamp_Global_CA_Root.pem\nAdding debian:certSIGN_ROOT_CA.pem\nAdding debian:certSIGN_Root_CA_G2.pem\nAdding debian:e-Szigno_Root_CA_2017.pem\nAdding debian:ePKI_Root_Certification_Authority.pem\nAdding debian:emSign_ECC_Root_CA_-_C3.pem\nAdding debian:emSign_ECC_Root_CA_-_G3.pem\nAdding debian:emSign_Root_CA_-_C1.pem\nAdding debian:emSign_Root_CA_-_G1.pem\nAdding debian:vTrus_ECC_Root_CA.pem\nAdding debian:vTrus_Root_CA.pem\ndone.\nSetting up openjdk-21-jre:amd64 (21.0.11+10-1~deb13u2) ...\nSetting up default-jre-headless (2:1.21-76) ...\nSetting up default-jre (2:1.21-76) ...\nSetting up r-cran-rjava (1.0-11-2) ...\nProcessing triggers for dictionaries-common (1.30.10) ...\nProcessing triggers for tex-common (6.19) ...\nRunning updmap-sys. This may take some time... done.\nRunning mktexlsr /var/lib/texmf ... done.\nBuilding format(s) --all.\n\tThis may take some time... done.\nProcessing triggers for libc-bin (2.41-12+deb13u3) ...\n\nverify rc=0\n........                                                                 [100%]\n8 passed in 0.27s\n\n",
+      "solve_stderr_tail": ""
+    }
+  ]
+}

@@ -3,14 +3,88 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
 import type { CommandResult } from "./types";
-import { Daytona, type Sandbox as DaytonaSandbox } from "@daytona/sdk";
+import { Daytona, Image as DaytonaImage, type Sandbox as DaytonaSandbox } from "@daytona/sdk";
 import { Sandbox as VercelSandbox } from "@vercel/sandbox";
-import { ModalClient, type App, type Sandbox as ModalSandbox } from "modal";
+import { ModalClient, type App, type Image as ModalImage, type Sandbox as ModalSandbox } from "modal";
 
 export interface Provider {
   start(): Promise<void>;
   run(command: string, cwd: string | undefined, timeoutSeconds: number): Promise<CommandResult>;
   stop(): Promise<void>;
+}
+
+export type ProviderOptions = {
+  runtime: string;
+  timeoutSeconds: number;
+  cpu: number;
+  memoryGb: number;
+  diskGb: number;
+  prewarmProfile?: string;
+  vercelSnapshotId?: string;
+  modalImageId?: string;
+  daytonaSnapshot?: string;
+};
+
+export const TERMINALBENCH_DEBIAN_PREWARM_COMMANDS = [
+  "ENV DEBIAN_FRONTEND=noninteractive",
+  [
+    "RUN apt-get update && apt-get install -y --no-install-recommends",
+    "build-essential",
+    "gfortran",
+    "pkg-config",
+    "curl",
+    "ca-certificates",
+    "git",
+    "autoconf",
+    "automake",
+    "libtool",
+    "cmake",
+    "make",
+    "default-jdk",
+    "r-base",
+    "r-base-dev",
+    "libcurl4-openssl-dev",
+    "libssl-dev",
+    "libxml2-dev",
+    "&& rm -rf /var/lib/apt/lists/*"
+  ].join(" "),
+  "RUN python3 -m pip install --upgrade pip && python3 -m pip install pytest==8.4.1 pandas numpy scipy scikit-learn",
+  "RUN Rscript -e \"install.packages('jsonlite', repos='https://cloud.r-project.org')\""
+];
+
+export const TERMINALBENCH_VERCEL_PREWARM_COMMAND = `
+set -eux
+sudo dnf install -y \
+  gcc gcc-c++ gcc-gfortran make cmake pkgconf-pkg-config git ca-certificates \
+  autoconf automake libtool java-21-amazon-corretto-devel \
+  openssl-devel libxml2-devel libcurl-devel python3-pip R R-devel || \
+sudo dnf install -y \
+  gcc gcc-c++ gcc-gfortran make cmake pkgconf-pkg-config git ca-certificates \
+  autoconf automake libtool java-17-amazon-corretto-devel \
+  openssl-devel libxml2-devel libcurl-devel python3-pip R R-devel
+python3 -m pip install --user --upgrade pip
+python3 -m pip install --user pytest==8.4.1 pandas numpy scipy scikit-learn
+Rscript -e "install.packages('jsonlite', repos='https://cloud.r-project.org')"
+`;
+
+export function debianPrewarmCommands(profile: string | undefined): string[] {
+  if (!profile) {
+    return [];
+  }
+  if (profile === "terminalbench-smoke") {
+    return TERMINALBENCH_DEBIAN_PREWARM_COMMANDS;
+  }
+  throw new Error(`Unsupported prewarm profile: ${profile}`);
+}
+
+export function vercelPrewarmCommand(profile: string | undefined): string {
+  if (!profile) {
+    return "";
+  }
+  if (profile === "terminalbench-smoke") {
+    return TERMINALBENCH_VERCEL_PREWARM_COMMAND;
+  }
+  throw new Error(`Unsupported prewarm profile: ${profile}`);
 }
 
 export class LocalProvider implements Provider {
@@ -51,13 +125,16 @@ export class VercelSdkProvider implements Provider {
   constructor(
     private readonly runtime: string,
     private readonly timeoutSeconds: number,
-    private readonly cpu: number
+    private readonly cpu: number,
+    private readonly snapshotId: string | undefined
   ) {}
 
   async start(): Promise<void> {
     this.sandbox = await VercelSandbox.create({
       ...vercelCredentials(),
-      runtime: this.runtime,
+      ...(this.snapshotId
+        ? { source: { type: "snapshot" as const, snapshotId: this.snapshotId } }
+        : { runtime: this.runtime }),
       timeout: this.timeoutSeconds * 1000,
       resources: { vcpus: this.cpu }
     });
@@ -92,15 +169,25 @@ export class VercelSdkProvider implements Provider {
   }
 }
 
-function vercelCredentials(): { token: string; teamId: string; projectId: string } | Record<string, never> {
-  const token = process.env.VERCEL_TOKEN ?? process.env.VERCEL_ACCESS_TOKEN;
+function noCompressionFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers);
+  headers.set("accept-encoding", "identity");
+  return fetch(input, { ...init, headers });
+}
+
+const vercelFetch = Object.assign(noCompressionFetch, { preconnect: fetch.preconnect }) as typeof fetch;
+
+export function vercelCredentials():
+  | { token: string; teamId: string; projectId: string; fetch: typeof fetch }
+  | Record<string, never> {
+  const token = process.env.VERCEL_TOKEN ?? process.env.VERCEL_ACCESS_TOKEN ?? process.env.VERCEL_API_KEY;
   const teamId = process.env.VERCEL_TEAM_ID;
   const projectId = process.env.VERCEL_PROJECT_ID;
   if (token || teamId || projectId) {
     if (!token || !teamId || !projectId) {
       throw new Error("Vercel SDK requires VERCEL_TOKEN or VERCEL_ACCESS_TOKEN, plus VERCEL_TEAM_ID and VERCEL_PROJECT_ID");
     }
-    return { token, teamId, projectId };
+    return { token, teamId, projectId, fetch: vercelFetch };
   }
   return {};
 }
@@ -114,12 +201,20 @@ export class ModalProvider implements Provider {
     private readonly image: string,
     private readonly timeoutSeconds: number,
     private readonly cpu: number,
-    private readonly memoryGb: number
+    private readonly memoryGb: number,
+    private readonly prewarmProfile: string | undefined,
+    private readonly modalImageId: string | undefined
   ) {}
 
   async start(): Promise<void> {
     this.app = await this.client.apps.fromName("code-sandbox-bench", { createIfMissing: true });
-    const image = this.client.images.fromRegistry(this.image);
+    let image: ModalImage = this.modalImageId
+      ? await this.client.images.fromId(this.modalImageId)
+      : this.client.images.fromRegistry(this.image);
+    const commands = debianPrewarmCommands(this.prewarmProfile);
+    if (!this.modalImageId && commands.length > 0) {
+      image = await image.dockerfileCommands(commands).build(this.app);
+    }
     this.sandbox = await this.client.sandboxes.create(this.app, image, {
       command: ["sleep", "infinity"],
       timeoutMs: this.timeoutSeconds * 1000,
@@ -166,20 +261,30 @@ export class DaytonaProvider implements Provider {
     private readonly timeoutSeconds: number,
     private readonly cpu: number,
     private readonly memoryGb: number,
-    private readonly diskGb: number
+    private readonly diskGb: number,
+    private readonly prewarmProfile: string | undefined,
+    private readonly daytonaSnapshot: string | undefined
   ) {}
 
   async start(): Promise<void> {
+    const baseParams = {
+      resources: {
+        cpu: this.cpu,
+        memory: this.memoryGb,
+        disk: this.diskGb
+      },
+      autoStopInterval: 0,
+      autoDeleteInterval: 0
+    };
+    if (this.daytonaSnapshot) {
+      this.sandbox = await this.client.create({ ...baseParams, snapshot: this.daytonaSnapshot }, { timeout: this.timeoutSeconds });
+      return;
+    }
+    const commands = debianPrewarmCommands(this.prewarmProfile);
     this.sandbox = await this.client.create(
       {
-        image: this.image,
-        resources: {
-          cpu: this.cpu,
-          memory: this.memoryGb,
-          disk: this.diskGb
-        },
-        autoStopInterval: 0,
-        autoDeleteInterval: 0
+        ...baseParams,
+        image: commands.length > 0 ? DaytonaImage.base(this.image).dockerfileCommands(commands) : this.image
       },
       { timeout: this.timeoutSeconds }
     );
@@ -208,23 +313,34 @@ export class DaytonaProvider implements Provider {
 
 export function makeProvider(
   name: string,
-  runtime: string,
-  timeoutSeconds: number,
-  cpu: number,
-  memoryGb: number,
-  diskGb: number
+  options: ProviderOptions
 ): Provider {
   if (name === "local") {
     return new LocalProvider();
   }
   if (name === "vercel") {
-    return new VercelSdkProvider(runtime, timeoutSeconds, cpu);
+    return new VercelSdkProvider(options.runtime, options.timeoutSeconds, options.cpu, options.vercelSnapshotId);
   }
   if (name === "modal") {
-    return new ModalProvider(runtime, timeoutSeconds, cpu, memoryGb);
+    return new ModalProvider(
+      options.runtime,
+      options.timeoutSeconds,
+      options.cpu,
+      options.memoryGb,
+      options.prewarmProfile,
+      options.modalImageId
+    );
   }
   if (name === "daytona") {
-    return new DaytonaProvider(runtime, timeoutSeconds, cpu, memoryGb, diskGb);
+    return new DaytonaProvider(
+      options.runtime,
+      options.timeoutSeconds,
+      options.cpu,
+      options.memoryGb,
+      options.diskGb,
+      options.prewarmProfile,
+      options.daytonaSnapshot
+    );
   }
   throw new Error(`Unsupported TypeScript provider: ${name}`);
 }
