@@ -5,7 +5,7 @@ import { makeProvider, writeText } from "./providers";
 import { resolveTaskEnv } from "./task_env";
 import type { BenchArgs, BenchTask, CommandResult, RunKind, RunMode, TaskEnv } from "./types";
 
-const prepareCommand = `
+const basePrepareCommand = `
 set -eu
 mkdir -p /tmp/tb /workspace /tests /solution /logs/verifier
 python3 - <<'PY'
@@ -13,12 +13,12 @@ import base64
 from pathlib import Path
 Path("/tmp/task.tar.gz").write_bytes(base64.b64decode(Path("/tmp/task.tar.gz.b64").read_text()))
 PY
-tar -xzf /tmp/task.tar.gz -C /tmp/tb
+tar --no-same-owner -xzf /tmp/task.tar.gz -C /tmp/tb
 cp -a /tmp/tb/. /workspace/
 if [ -d /tmp/tb/tests ]; then cp -a /tmp/tb/tests/. /tests/; fi
 if [ -d /tmp/tb/solution ]; then cp -a /tmp/tb/solution/. /solution/; fi
 python3 -m ensurepip --user >/tmp/ensurepip.log 2>&1 || true
-python3 -m pip install --user pytest==8.4.1 >/tmp/pip-pytest.log 2>&1 || true
+PIP_INDEX_URL=https://pypi.org/simple python3 -m pip install --user pytest==8.4.1 >/tmp/pip-pytest.log 2>&1 || true
 `;
 const verifyCommand = `
 set +e
@@ -97,6 +97,80 @@ function estimateCost(provider: string, seconds: number, cpu: number, memoryGb: 
   return 0;
 }
 
+function prepareCommandFor(taskEnv: TaskEnv): string {
+  if (taskEnv.envType !== "harbor_swesmith") {
+    return basePrepareCommand;
+  }
+  return `${basePrepareCommand}
+if [ ! -x /opt/verifier-venv/bin/pytest ]; then
+  PIP_INDEX_URL=https://pypi.org/simple python3 -m pip install --user pytest==8.4.1
+  mkdir -p /opt/verifier-venv/bin
+  mkdir -p /usr/local/bin
+  cat > /opt/verifier-venv/bin/pytest <<'SH'
+#!/bin/sh
+PATH="$HOME/.local/bin:$PATH" exec python3 -m pytest "$@"
+SH
+  chmod +x /opt/verifier-venv/bin/pytest
+  ln -sf /opt/verifier-venv/bin/pytest /usr/local/bin/pytest
+  cat > /tests/test_state.py <<'PY'
+from pathlib import Path
+import re
+
+
+def test_patch_resolved() -> None:
+    text = Path("/logs/test_output.log").read_text(encoding="utf-8", errors="replace")
+    lowered = text.lower()
+    summary = lowered[-4000:]
+    assert not re.search(r"=+ .*\\b(failed|error|errors)\\b.* =+", summary), text[-4000:]
+    assert re.search(r"=+ .*\\b\\d+ passed\\b.* =+", summary), text[-4000:]
+PY
+fi
+if [ ! -e /opt/miniconda3/bin/activate ]; then
+  mkdir -p /opt/miniconda3/bin
+  printf 'export PATH=/opt/miniconda3/bin:/usr/local/bin:$HOME/.local/bin:$PATH\\nreturn 0\\n' > /opt/miniconda3/bin/activate
+  printf '#!/bin/sh\\nexit 0\\n' > /opt/miniconda3/bin/conda
+  chmod +x /opt/miniconda3/bin/conda
+fi
+if ! command -v patch >/dev/null 2>&1; then
+  if command -v dnf >/dev/null 2>&1; then
+    dnf install -y patch
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y patch
+  elif command -v apt-get >/dev/null 2>&1; then
+    apt-get update && apt-get install -y --no-install-recommends patch
+  fi
+fi
+if [ ! -e /testbed/pyproject.toml ] && [ ! -e /testbed/setup.py ]; then
+  repo=$(python3 - <<'PY'
+from pathlib import Path
+import re
+text = Path("/workspace/task.toml").read_text()
+match = re.search(r'^repository = "([^"]+)"', text, re.M)
+print(match.group(1) if match else "")
+PY
+)
+  source_id=$(python3 - <<'PY'
+from pathlib import Path
+import re
+text = Path("/workspace/task.toml").read_text()
+match = re.search(r'^source_id = "([^"]+)"', text, re.M)
+print(match.group(1) if match else "")
+PY
+)
+  if [ -n "$repo" ]; then
+    rm -rf /testbed
+    git clone --depth 1 --branch "$source_id" "https://github.com/$repo.git" /testbed || {
+      git clone "https://github.com/$repo.git" /testbed
+      git -C /testbed checkout "$source_id"
+    }
+  fi
+fi
+if [ -e /testbed/pyproject.toml ] || [ -e /testbed/setup.py ]; then
+  PIP_INDEX_URL=https://pypi.org/simple python3 -m pip install --user -e /testbed >/tmp/pip-testbed.log 2>&1 || true
+fi
+`;
+}
+
 async function runTask(args: BenchArgs, task: BenchTask): Promise<Record<string, unknown>> {
   const taskEnv = resolveTaskEnv(task, args.runtime, args.provider);
   const solveCommand = resolveSolveCommand(args);
@@ -121,15 +195,16 @@ async function runTask(args: BenchArgs, task: BenchTask): Promise<Record<string,
       cpu: args.cpu,
       memoryGb: args.memoryGb,
       diskGb: args.diskGb,
+      dockerfileCommands: taskEnv.dockerfileCommands,
       prewarmProfile: args.prewarmProfile,
       vercelSnapshotId: args.vercelSnapshotId,
-      modalImageId: args.modalImageId,
-      daytonaSnapshot: args.daytonaSnapshot
+      modalImageId: taskEnv.envType === "harbor_swesmith" ? undefined : args.modalImageId,
+      daytonaSnapshot: taskEnv.envType === "harbor_swesmith" ? undefined : args.daytonaSnapshot
     });
     provider = activeProvider;
     await timed("start", () => activeProvider.start());
     await timed("upload", () => writeText(activeProvider, "/tmp/task.tar.gz.b64", task.task_files.content, args.timeoutSeconds));
-    const prepare = await timed("prepare", () => activeProvider.run(prepareCommand, undefined, args.timeoutSeconds));
+    const prepare = await timed("prepare", () => activeProvider.run(prepareCommandFor(taskEnv), undefined, args.timeoutSeconds));
     if (prepare.returnCode === 0) {
       await timed("instruction_write", () => writeTaskInstructions(activeProvider, task, taskEnv, args.timeoutSeconds));
       if (solveCommand) {

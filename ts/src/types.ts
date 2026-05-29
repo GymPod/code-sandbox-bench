@@ -27,6 +27,7 @@ export type TaskEnv = {
   verifierCwd: string;
   runtime?: string;
   dockerImage?: string;
+  dockerfileCommands?: string[];
   dockerfilePath?: string;
 };
 

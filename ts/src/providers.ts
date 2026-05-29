@@ -19,6 +19,7 @@ export type ProviderOptions = {
   cpu: number;
   memoryGb: number;
   diskGb: number;
+  dockerfileCommands?: string[];
   prewarmProfile?: string;
   vercelSnapshotId?: string;
   modalImageId?: string;
@@ -204,6 +205,7 @@ export class ModalProvider implements Provider {
     private readonly timeoutSeconds: number,
     private readonly cpu: number,
     private readonly memoryGb: number,
+    private readonly dockerfileCommands: string[] | undefined,
     private readonly prewarmProfile: string | undefined,
     private readonly modalImageId: string | undefined
   ) {}
@@ -213,7 +215,7 @@ export class ModalProvider implements Provider {
     let image: ModalImage = this.modalImageId
       ? await this.client.images.fromId(this.modalImageId)
       : this.client.images.fromRegistry(this.image);
-    const commands = debianPrewarmCommands(this.prewarmProfile);
+    const commands = this.dockerfileCommands ?? debianPrewarmCommands(this.prewarmProfile);
     if (!this.modalImageId && commands.length > 0) {
       image = await image.dockerfileCommands(commands).build(this.app);
     }
@@ -264,6 +266,7 @@ export class DaytonaProvider implements Provider {
     private readonly cpu: number,
     private readonly memoryGb: number,
     private readonly diskGb: number,
+    private readonly dockerfileCommands: string[] | undefined,
     private readonly prewarmProfile: string | undefined,
     private readonly daytonaSnapshot: string | undefined
   ) {}
@@ -282,7 +285,7 @@ export class DaytonaProvider implements Provider {
       this.sandbox = await this.client.create({ ...baseParams, snapshot: this.daytonaSnapshot }, { timeout: this.timeoutSeconds });
       return;
     }
-    const commands = debianPrewarmCommands(this.prewarmProfile);
+    const commands = this.dockerfileCommands ?? debianPrewarmCommands(this.prewarmProfile);
     this.sandbox = await this.client.create(
       {
         ...baseParams,
@@ -329,6 +332,7 @@ export function makeProvider(
       options.timeoutSeconds,
       options.cpu,
       options.memoryGb,
+      options.dockerfileCommands,
       options.prewarmProfile,
       options.modalImageId
     );
@@ -340,6 +344,7 @@ export function makeProvider(
       options.cpu,
       options.memoryGb,
       options.diskGb,
+      options.dockerfileCommands,
       options.prewarmProfile,
       options.daytonaSnapshot
     );
