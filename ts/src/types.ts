@@ -36,6 +36,7 @@ export type BenchArgs = {
   mode: RunMode;
   dataset: string;
   taskIndex: string;
+  taskLimit?: number;
   runtime: string;
   timeoutSeconds: number;
   solveTimeoutSeconds: number;

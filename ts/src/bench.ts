@@ -44,6 +44,7 @@ function parseArgs(argv: string[]): BenchArgs {
     mode,
     dataset: values.get("--dataset") ?? resolve(import.meta.dir, "../../data/swesmith_v4_smoke100.jsonl"),
     taskIndex: values.get("--task-index") ?? "all",
+    taskLimit: parseOptionalInt(values.get("--task-limit")),
     runtime: values.get("--runtime") ?? "python3.13",
     timeoutSeconds: Number.parseInt(values.get("--timeout-seconds") ?? "180", 10),
     solveTimeoutSeconds: Number.parseInt(values.get("--solve-timeout-seconds") ?? values.get("--timeout-seconds") ?? "180", 10),
@@ -60,6 +61,10 @@ function parseArgs(argv: string[]): BenchArgs {
     diskGb: Number.parseInt(values.get("--disk-gb") ?? "10", 10),
     output: values.get("--output")
   };
+}
+
+function parseOptionalInt(value: string | undefined): number | undefined {
+  return value === undefined ? undefined : Number.parseInt(value, 10);
 }
 
 function parseRunMode(value: string | undefined): RunMode {
@@ -103,12 +108,35 @@ function prepareCommandFor(taskEnv: TaskEnv): string {
   }
   return `${basePrepareCommand}
 if [ ! -x /opt/verifier-venv/bin/pytest ]; then
-  PIP_INDEX_URL=https://pypi.org/simple python3 -m pip install --user pytest==8.4.1
+  bench_python=$(command -v python3 || printf python3)
+  if printf '%s' "$bench_python" | grep -q '^/vercel/' && ! "$bench_python" - <<'PY' >/dev/null 2>&1
+import sqlite3
+PY
+  then
+    if /usr/bin/python3 - <<'PY' >/dev/null 2>&1
+import sqlite3
+PY
+    then
+      bench_python=/usr/bin/python3
+    fi
+  fi
+  if [ "$bench_python" = "/usr/bin/python3" ]; then
+    if command -v dnf >/dev/null 2>&1; then
+      dnf install -y python3-pip python3-devel gcc gcc-c++ make freetype-devel libpng-devel
+    elif command -v yum >/dev/null 2>&1; then
+      yum install -y python3-pip python3-devel gcc gcc-c++ make freetype-devel libpng-devel
+    elif command -v apt-get >/dev/null 2>&1; then
+      apt-get update && apt-get install -y --no-install-recommends python3-pip python3-dev gcc g++ make libfreetype6-dev libpng-dev
+    fi
+  fi
+  "$bench_python" -m ensurepip --user >/tmp/ensurepip-fallback.log 2>&1 || true
+  PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user --upgrade pip >/tmp/pip-upgrade-fallback.log 2>&1 || true
+  PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user pytest==8.3.4 pytest-cov==6.0.0 pytest-xdist pytest-timeout pytest-mock pytest-asyncio hypothesis mypy==1.2.0 numpy pillow matplotlib
   mkdir -p /opt/verifier-venv/bin
   mkdir -p /usr/local/bin
-  cat > /opt/verifier-venv/bin/pytest <<'SH'
+  cat > /opt/verifier-venv/bin/pytest <<SH
 #!/bin/sh
-PATH="$HOME/.local/bin:$PATH" exec python3 -m pytest "$@"
+PATH="/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH" exec "$bench_python" -m pytest "\\$@"
 SH
   chmod +x /opt/verifier-venv/bin/pytest
   ln -sf /opt/verifier-venv/bin/pytest /usr/local/bin/pytest
@@ -127,7 +155,7 @@ PY
 fi
 if [ ! -e /opt/miniconda3/bin/activate ]; then
   mkdir -p /opt/miniconda3/bin
-  printf 'export PATH=/opt/miniconda3/bin:/usr/local/bin:$HOME/.local/bin:$PATH\\nreturn 0\\n' > /opt/miniconda3/bin/activate
+  printf 'export PATH=/opt/miniconda3/bin:/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH\\nreturn 0\\n' > /opt/miniconda3/bin/activate
   printf '#!/bin/sh\\nexit 0\\n' > /opt/miniconda3/bin/conda
   chmod +x /opt/miniconda3/bin/conda
 fi
@@ -166,7 +194,9 @@ PY
   fi
 fi
 if [ -e /testbed/pyproject.toml ] || [ -e /testbed/setup.py ]; then
-  PIP_INDEX_URL=https://pypi.org/simple python3 -m pip install --user -e /testbed >/tmp/pip-testbed.log 2>&1 || true
+  "\${bench_python:-python3}" -m ensurepip --user >/tmp/ensurepip-testbed.log 2>&1 || true
+  PIP_INDEX_URL=https://pypi.org/simple "\${bench_python:-python3}" -m pip install --user -e /testbed >/tmp/pip-testbed.log 2>&1 || true
+  PIP_INDEX_URL=https://pypi.org/simple "\${bench_python:-python3}" -m pip install --user -e '/testbed[test,tests,dev]' >/tmp/pip-testbed-extras.log 2>&1 || true
 fi
 `;
 }
@@ -331,7 +361,7 @@ function estimateRunCost(args: BenchArgs, results: Record<string, unknown>[]): n
 
 async function main(): Promise<void> {
   const args = parseArgs(Bun.argv.slice(2));
-  const tasks = loadTasks(args.dataset, args.taskIndex);
+  const tasks = loadTasks(args.dataset, args.taskIndex, args.taskLimit);
   const kind: RunKind = resolveSolveCommand(args) ? "solve" : "verifier";
   const results = await runWithConcurrency(tasks, args);
   const summary = {

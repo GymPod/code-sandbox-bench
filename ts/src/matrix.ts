@@ -9,6 +9,7 @@ type MatrixArgs = {
   modes: RunMode[];
   dataset: string;
   taskIndex: string;
+  taskLimit?: number;
   outputDir: string;
   suffix: string;
   timeoutSeconds: number;
@@ -67,6 +68,7 @@ function parseArgs(argv: string[]): MatrixArgs {
     modes,
     dataset: resolve(values.get("--dataset") ?? resolve(import.meta.dir, "../../data/swesmith_v4_smoke100.jsonl")),
     taskIndex: values.get("--task-index") ?? "all",
+    taskLimit: parseOptionalInt(values.get("--task-limit")),
     outputDir: resolve(values.get("--output-dir") ?? resolve(import.meta.dir, "../../results")),
     suffix: values.get("--suffix") ?? yyyymmdd(new Date()),
     timeoutSeconds: Number.parseInt(values.get("--timeout-seconds") ?? "180", 10),
@@ -152,6 +154,7 @@ function buildRunSpecs(args: MatrixArgs): RunSpec[] {
         args.dataset,
         "--task-index",
         args.taskIndex,
+        ...(args.taskLimit === undefined ? [] : ["--task-limit", String(args.taskLimit)]),
         "--runtime",
         runtime,
         "--timeout-seconds",

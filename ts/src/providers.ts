@@ -272,7 +272,12 @@ export class DaytonaProvider implements Provider {
   ) {}
 
   async start(): Promise<void> {
+    const sandboxName = `code-sandbox-bench-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const baseParams = {
+      name: sandboxName,
+      labels: {
+        app: "code-sandbox-bench"
+      },
       resources: {
         cpu: this.cpu,
         memory: this.memoryGb,
@@ -281,18 +286,24 @@ export class DaytonaProvider implements Provider {
       autoStopInterval: 0,
       autoDeleteInterval: 0
     };
-    if (this.daytonaSnapshot) {
-      this.sandbox = await this.client.create({ ...baseParams, snapshot: this.daytonaSnapshot }, { timeout: this.timeoutSeconds });
-      return;
-    }
-    const commands = this.dockerfileCommands ?? debianPrewarmCommands(this.prewarmProfile);
-    this.sandbox = await this.client.create(
-      {
+    await retryDaytonaStart(async (attempt) => {
+      const params = {
         ...baseParams,
-        image: commands.length > 0 ? DaytonaImage.base(this.image).dockerfileCommands(commands) : this.image
-      },
-      { timeout: this.timeoutSeconds }
-    );
+        name: attempt === 1 ? sandboxName : `${sandboxName}-${attempt}`
+      };
+      if (this.daytonaSnapshot) {
+        this.sandbox = await this.client.create({ ...params, snapshot: this.daytonaSnapshot }, { timeout: this.timeoutSeconds });
+        return;
+      }
+      const commands = this.dockerfileCommands ?? debianPrewarmCommands(this.prewarmProfile);
+      this.sandbox = await this.client.create(
+        {
+          ...params,
+          image: commands.length > 0 ? DaytonaImage.base(this.image).dockerfileCommands(commands) : this.image
+        },
+        { timeout: this.timeoutSeconds }
+      );
+    });
   }
 
   async run(command: string, cwd: string | undefined, timeoutSeconds: number): Promise<CommandResult> {
@@ -314,6 +325,33 @@ export class DaytonaProvider implements Provider {
     }
     await this.client[Symbol.asyncDispose]();
   }
+}
+
+async function retryDaytonaStart(action: (attempt: number) => Promise<void>): Promise<void> {
+  const attempts = 3;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await action(attempt);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts || !isRetryableDaytonaStartError(error)) {
+        throw error;
+      }
+      await sleep(attempt * 2000);
+    }
+  }
+  throw lastError;
+}
+
+function isRetryableDaytonaStartError(error: unknown): boolean {
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return /502 Bad Gateway|Sandbox with name .* already exists|rate limit|RESOURCE_EXHAUSTED|ECONNRESET|ETIMEDOUT/i.test(message);
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 export function makeProvider(
