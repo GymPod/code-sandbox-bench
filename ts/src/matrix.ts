@@ -50,6 +50,9 @@ type RunResult = {
   task_concurrency: number;
   output: string;
   exit_code: number;
+  passed?: number;
+  task_count?: number;
+  all_passed?: boolean;
   elapsed_seconds: number;
 };
 
@@ -185,10 +188,10 @@ function buildRunSpecs(args: MatrixArgs): RunSpec[] {
 function taskConcurrencyFor(provider: MatrixProvider, args: MatrixArgs): number {
   const modeCount = Math.max(1, args.modes.length);
   if (provider === "vercel") {
-    return args.vercelConcurrency ?? args.concurrency;
+    return args.vercelConcurrency ?? (usesTaskDockerDataset(args) ? 1 : args.concurrency);
   }
   if (provider === "modal") {
-    return args.modalConcurrency ?? Math.min(args.concurrency, Math.max(1, Math.floor(5 / modeCount)));
+    return args.modalConcurrency ?? (usesTaskDockerDataset(args) ? 1 : Math.min(args.concurrency, Math.max(1, Math.floor(5 / modeCount))));
   }
   const cpuCap = Math.floor(10 / args.cpu / modeCount);
   const memoryCap = Math.floor(10 / args.memoryGb / modeCount);
@@ -235,6 +238,7 @@ async function runSpec(spec: RunSpec): Promise<RunResult> {
   });
   const exitCode = await proc.exited;
   const elapsedSeconds = (performance.now() - started) / 1000;
+  const runSummary = readBenchSummary(spec.output);
   console.log(`finished ${spec.provider} ${spec.mode}: exit ${exitCode}, ${elapsedSeconds.toFixed(2)}s`);
   return {
     provider: spec.provider,
@@ -243,8 +247,23 @@ async function runSpec(spec: RunSpec): Promise<RunResult> {
     task_concurrency: spec.taskConcurrency,
     output: spec.output,
     exit_code: exitCode,
+    passed: runSummary?.passed,
+    task_count: runSummary?.task_count,
+    all_passed: runSummary ? runSummary.passed === runSummary.task_count : undefined,
     elapsed_seconds: elapsedSeconds
   };
+}
+
+function readBenchSummary(output: string): { passed: number; task_count: number } | undefined {
+  try {
+    const parsed = JSON.parse(readFileSync(output, "utf8")) as { passed?: unknown; task_count?: unknown };
+    if (typeof parsed.passed === "number" && typeof parsed.task_count === "number") {
+      return { passed: parsed.passed, task_count: parsed.task_count };
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
 }
 
 async function runWithConcurrency(specs: RunSpec[], concurrency: number): Promise<RunResult[]> {
@@ -282,7 +301,7 @@ async function main(): Promise<void> {
     writeFileSync(args.output, output);
   }
   console.log(output);
-  if (results.some((result) => result.exit_code !== 0)) {
+  if (results.some((result) => result.exit_code !== 0 || result.all_passed === false)) {
     process.exitCode = 1;
   }
 }

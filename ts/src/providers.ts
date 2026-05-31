@@ -147,20 +147,38 @@ export class VercelSdkProvider implements Provider {
     if (!this.sandbox) {
       throw new Error("Vercel sandbox not started");
     }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
+    const commandProcess = await this.sandbox.runCommand({
+      cmd: "/bin/sh",
+      args: ["-lc", command],
+      cwd,
+      sudo: true,
+      detached: true,
+      signal: AbortSignal.timeout(60_000)
+    });
+    const started = performance.now();
+    while ((performance.now() - started) / 1000 < timeoutSeconds) {
+      const remainingMs = Math.max(1000, timeoutSeconds * 1000 - (performance.now() - started));
+      const waitMs = Math.min(60_000, remainingMs);
+      try {
+        const finished = await commandProcess.wait({ signal: AbortSignal.timeout(waitMs) });
+        const [stdout, stderr] = await Promise.all([this.commandOutput(finished, "stdout"), this.commandOutput(finished, "stderr")]);
+        return { stdout, stderr, returnCode: finished.exitCode };
+      } catch {
+        await sleep(2000);
+      }
+    }
+    await commandProcess.kill("SIGTERM", { abortSignal: AbortSignal.timeout(60_000) }).catch(() => {});
+    return { stdout: "", stderr: `Command timed out after ${timeoutSeconds}s`, returnCode: 124 };
+  }
+
+  private async commandOutput(
+    command: { stdout(opts?: { signal?: AbortSignal }): Promise<string>; stderr(opts?: { signal?: AbortSignal }): Promise<string> },
+    stream: "stdout" | "stderr"
+  ): Promise<string> {
     try {
-      const process = await this.sandbox.runCommand({
-        cmd: "/bin/sh",
-        args: ["-lc", command],
-        cwd,
-        sudo: true,
-        signal: controller.signal
-      });
-      const [stdout, stderr] = await Promise.all([process.stdout(), process.stderr()]);
-      return { stdout, stderr, returnCode: process.exitCode };
-    } finally {
-      clearTimeout(timeout);
+      return await command[stream]({ signal: AbortSignal.timeout(60_000) });
+    } catch {
+      return "";
     }
   }
 
@@ -231,17 +249,23 @@ export class ModalProvider implements Provider {
     if (!this.sandbox) {
       throw new Error("Modal sandbox not started");
     }
-    const process = await this.sandbox.exec(["/bin/sh", "-lc", command], {
-      workdir: cwd,
-      timeoutMs: timeoutSeconds * 1000,
-      mode: "text"
-    });
-    const [stdout, stderr, returnCode] = await Promise.all([
-      process.stdout.readText(),
-      process.stderr.readText(),
-      process.wait()
-    ]);
-    return { stdout, stderr, returnCode };
+    return await withTimeout(
+      (async () => {
+        const process = await this.sandbox!.exec(["/bin/sh", "-lc", command], {
+          workdir: cwd,
+          timeoutMs: timeoutSeconds * 1000,
+          mode: "text"
+        });
+        const [stdout, stderr, returnCode] = await Promise.all([
+          process.stdout.readText(),
+          process.stderr.readText(),
+          process.wait()
+        ]);
+        return { stdout, stderr, returnCode };
+      })(),
+      (timeoutSeconds + 30) * 1000,
+      `Modal command timed out after ${timeoutSeconds}s`
+    );
   }
 
   async stop(): Promise<void> {
@@ -310,12 +334,18 @@ export class DaytonaProvider implements Provider {
     if (!this.sandbox) {
       throw new Error("Daytona sandbox not started");
     }
-    const response = await this.sandbox.process.executeCommand(command, cwd, undefined, timeoutSeconds);
-    return {
-      stdout: response.artifacts?.stdout ?? response.result ?? "",
-      stderr: "",
-      returnCode: response.exitCode ?? 0
-    };
+    return await withTimeout(
+      (async () => {
+        const response = await this.sandbox!.process.executeCommand(command, cwd, undefined, timeoutSeconds);
+        return {
+          stdout: response.artifacts?.stdout ?? response.result ?? "",
+          stderr: "",
+          returnCode: response.exitCode ?? 0
+        };
+      })(),
+      (timeoutSeconds + 30) * 1000,
+      `Daytona command timed out after ${timeoutSeconds}s`
+    );
   }
 
   async stop(): Promise<void> {
@@ -352,6 +382,18 @@ function isRetryableDaytonaStartError(error: unknown): boolean {
 
 function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), milliseconds);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  });
 }
 
 export function makeProvider(

@@ -131,7 +131,7 @@ PY
   fi
   "$bench_python" -m ensurepip --user >/tmp/ensurepip-fallback.log 2>&1 || true
   PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user --upgrade pip >/tmp/pip-upgrade-fallback.log 2>&1 || true
-  PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user pytest==8.3.4 pytest-cov==6.0.0 pytest-xdist pytest-timeout pytest-mock pytest-asyncio hypothesis mypy==1.2.0 numpy pillow matplotlib
+  PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user pytest==8.3.4 pytest-cov==6.0.0 pytest-xdist pytest-timeout pytest-mock pytest-asyncio hypothesis mypy==1.2.0 numpy pillow matplotlib gevent eventlet
   mkdir -p /opt/verifier-venv/bin
   mkdir -p /usr/local/bin
   cat > /opt/verifier-venv/bin/pytest <<SH
@@ -201,7 +201,63 @@ fi
 `;
 }
 
+const MAX_TRANSIENT_TASK_ATTEMPTS = 5;
+
 async function runTask(args: BenchArgs, task: BenchTask): Promise<Record<string, unknown>> {
+  const retryErrors: string[] = [];
+  let totalElapsedSeconds = 0;
+  for (let attempt = 1; attempt <= MAX_TRANSIENT_TASK_ATTEMPTS; attempt += 1) {
+    const result = await runTaskAttempt(args, task);
+    totalElapsedSeconds += Number(result.elapsed_seconds ?? 0);
+    if (attempt > 1) {
+      result.task_attempts = attempt;
+    }
+    if (retryErrors.length > 0) {
+      result.transient_retry_errors = retryErrors;
+      result.elapsed_seconds = totalElapsedSeconds;
+    }
+    if (!isTransientTaskFailure(args, result) || attempt === MAX_TRANSIENT_TASK_ATTEMPTS) {
+      return result;
+    }
+    retryErrors.push(String(result.stderr_tail ?? ""));
+    console.warn(`retrying ${task.task_id} on ${args.provider} after transient provider transport error`);
+    await sleep(attempt * 2000);
+  }
+  throw new Error("unreachable retry state");
+}
+
+function isTransientTaskFailure(args: BenchArgs, result: Record<string, unknown>): boolean {
+  const stderr = String(result.stderr_tail ?? "");
+  if (result.passed !== false) {
+    return false;
+  }
+  if (args.provider === "vercel") {
+    return (
+      stderr.includes("StreamError: Stream ended before command finished") ||
+      stderr.includes("Error: Unable to connect. Is the computer able to access the url?") ||
+      stderr.includes("AbortError: The operation was aborted.") ||
+      stderr.includes("TimeoutError: The operation timed out.") ||
+      stderr.includes("Error: Status code 410 is not ok")
+    );
+  }
+  if (args.provider === "modal") {
+    return (
+      stderr.includes("Error: Deadline exceeded") ||
+      stderr.includes("Failed to read exec stdio stream") ||
+      stderr.includes("UNAVAILABLE") ||
+      stderr.includes("Name resolution failed") ||
+      stderr.includes("ECONNREFUSED") ||
+      stderr.includes("No connection established")
+    );
+  }
+  return false;
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function runTaskAttempt(args: BenchArgs, task: BenchTask): Promise<Record<string, unknown>> {
   const taskEnv = resolveTaskEnv(task, args.runtime, args.provider);
   const solveCommand = resolveSolveCommand(args);
   const started = performance.now();
@@ -383,6 +439,9 @@ async function main(): Promise<void> {
     writeFileSync(args.output, output);
   }
   console.log(output);
+  if (summary.passed !== summary.task_count) {
+    process.exitCode = 1;
+  }
 }
 
 async function runWithConcurrency(tasks: BenchTask[], args: BenchArgs): Promise<Record<string, unknown>[]> {
