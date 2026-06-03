@@ -2,12 +2,45 @@
 
 Generated: 2026-05-29T18:40:23.302Z
 
+Updated: 2026-06-05 with Vercel SWE-Smith fallback verifier rerun findings.
+
 ## Scope
 
 - Dataset: `data/swesmith_v4_smoke100.jsonl`.
 - Task env mapping: `harbor_swesmith` (100 tasks).
 - Solve runs cover cold and warm startup for Vercel, Modal, and Daytona using `scripts/openrouter_solver.sh` through OpenRouter.
 - Verifier-only runs are intentionally excluded from this report.
+- The full provider tables below are historical 100-task results from 2026-05-29. The latest Vercel-specific rerun uses the first 20 SWE-Smith tasks and is summarized separately because it was run after Vercel fallback verifier fixes.
+
+## Latest Vercel 20-Task Rerun
+
+Command:
+
+```sh
+bun --env-file=.env ts/src/matrix.ts --providers vercel --modes cold,warm --task-index all --task-limit 20 --concurrency 2 --run-concurrency 2 --timeout-seconds 900 --solve-timeout-seconds 300 --solve-command-file /tmp/code-sandbox-bench-gold-solver.sh --suffix gold-task20-vercel-current-rerun --output results/solve-price-matrix-gold-task20-vercel-current-rerun.json
+```
+
+provider | mode | passed | elapsed seconds | estimated provider cost | artifact
+--- | --- | ---: | ---: | ---: | ---
+vercel | cold | 13/20 | 995.1 | $0.0942 | `results/ts-vercel-cold-solve-all-gold-task20-vercel-current-rerun.json`
+vercel | warm | 13/20 | 1024.0 | $0.0969 | `results/ts-vercel-warm-solve-all-gold-task20-vercel-current-rerun.json`
+
+The rerun executed Vercel cold and warm jobs concurrently (`run_concurrency=2`). The matrix runner capped Vercel task concurrency to one task per run, so effective task concurrency was `vercel-cold=1` and `vercel-warm=1`.
+
+Remaining failures in the 20-task Vercel slice:
+
+- `amueller__word_cloud.ec24191c.func_basic__b5q81acm`: CLI executable invocation errors.
+- `conan-io__conan.86f29e13.pr_11412` and `conan-io__conan.86f29e13.pr_15965`: real test/assertion failures after setup.
+- `dask__dask.5f61e423.combine_module__dkp16syb`: real test failures (`35 failed, 5846 passed`).
+- `encode__starlette.db5063c2.combine_file__hrjivx2s` and `encode__starlette.db5063c2.func_basic__vehyiaux`: staticfiles permission failures (`2 failed, 865 passed`).
+- `facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998`: the 20-task matrix was launched before the fvcore PyTorch patch, so it still shows torch-related collection errors in that artifact.
+
+Separate fvcore/PyTorch fidelity probe:
+
+- A repo-specific Vercel fallback now installs `torch` from `https://download.pytorch.org/whl/cpu` only for `facebookresearch__fvcore*`.
+- Targeted artifact: `results/ts-vercel-cold-fvcore-current-preparetorch.json`.
+- Result: fvcore collection errors are gone; the task reaches real tests with `155 passed, 3 failed, 2 skipped`.
+- Docker metadata for `jyangballin/swesmith.x86_64.facebookresearch_1776_fvcore.a491d5b9` shows an Ubuntu 22.04 image with Miniconda Python 3.12 and a repo-specific `/root/setup_env.sh`. The manifest includes a 6.6 GB layer, so exact-image inspection or direct reuse is expensive. The durable Vercel fidelity path remains a task-compatible prebuilt snapshot/runtime derived from each SWE-Smith Docker setup; the narrow PyTorch install improves signal without adding global setup cost.
 
 ## Task Environment Mapping
 
