@@ -108,18 +108,25 @@ function prepareCommandFor(taskEnv: TaskEnv): string {
   }
   return `${basePrepareCommand}
 if [ ! -x /opt/verifier-venv/bin/pytest ]; then
+  repo_name=$(python3 - <<'PY'
+from pathlib import Path
+import re
+text = Path("/workspace/task.toml").read_text()
+match = re.search(r'^repository = "([^"]+)"', text, re.M)
+print(match.group(1).split("/", 1)[-1] if match else "")
+PY
+)
   bench_python=$(command -v python3 || printf python3)
-  if printf '%s' "$bench_python" | grep -q '^/vercel/' && ! "$bench_python" - <<'PY' >/dev/null 2>&1
+  case "$repo_name" in
+    cantools__*)
+      if /usr/bin/python3 - <<'PY' >/dev/null 2>&1
 import sqlite3
 PY
-  then
-    if /usr/bin/python3 - <<'PY' >/dev/null 2>&1
-import sqlite3
-PY
-    then
-      bench_python=/usr/bin/python3
-    fi
-  fi
+      then
+        bench_python=/usr/bin/python3
+      fi
+      ;;
+  esac
   if [ "$bench_python" = "/usr/bin/python3" ]; then
     if command -v dnf >/dev/null 2>&1; then
       dnf install -y python3-pip python3-devel gcc gcc-c++ make freetype-devel libpng-devel
@@ -131,12 +138,13 @@ PY
   fi
   "$bench_python" -m ensurepip --user >/tmp/ensurepip-fallback.log 2>&1 || true
   PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user --upgrade pip >/tmp/pip-upgrade-fallback.log 2>&1 || true
-  PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user pytest==8.3.4 pytest-cov==6.0.0 pytest-xdist pytest-timeout pytest-mock pytest-asyncio hypothesis mypy==1.2.0 numpy pillow matplotlib gevent eventlet
+  verifier_compat_deps="pytest==8.3.4 pytest-xdist pytest-timeout pytest-mock pytest-asyncio==0.21.2 hypothesis mypy==1.2.0 numpy pillow matplotlib gevent eventlet PyYAML httpx toolz importlib_metadata cloudpickle fsspec partd"
+  PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user $verifier_compat_deps
   mkdir -p /opt/verifier-venv/bin
   mkdir -p /usr/local/bin
   cat > /opt/verifier-venv/bin/pytest <<SH
 #!/bin/sh
-PATH="/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH" exec "$bench_python" -m pytest "\\$@"
+PATH="/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH" exec "$bench_python" -m pytest -o addopts='' "\\$@"
 SH
   chmod +x /opt/verifier-venv/bin/pytest
   ln -sf /opt/verifier-venv/bin/pytest /usr/local/bin/pytest
@@ -197,6 +205,23 @@ if [ -e /testbed/pyproject.toml ] || [ -e /testbed/setup.py ]; then
   "\${bench_python:-python3}" -m ensurepip --user >/tmp/ensurepip-testbed.log 2>&1 || true
   PIP_INDEX_URL=https://pypi.org/simple "\${bench_python:-python3}" -m pip install --user -e /testbed >/tmp/pip-testbed.log 2>&1 || true
   PIP_INDEX_URL=https://pypi.org/simple "\${bench_python:-python3}" -m pip install --user -e '/testbed[test,tests,dev]' >/tmp/pip-testbed-extras.log 2>&1 || true
+  repo_extra_deps=""
+  repo_torch_deps=""
+  case "$repo_name" in
+    cantools__*) repo_extra_deps="bitstruct textparser diskcache python-can crccheck argparse_addons parameterized" ;;
+    dask__*) repo_extra_deps="pandas pyarrow lz4 toolz importlib_metadata cloudpickle fsspec partd" ;;
+    encode__starlette*) repo_extra_deps="httpx trio python-multipart jinja2 itsdangerous" ;;
+    facebookresearch__fvcore*)
+      repo_extra_deps="yacs termcolor iopath tabulate tqdm"
+      repo_torch_deps="torch"
+      ;;
+    facelessuser__soupsieve*) repo_extra_deps="beautifulsoup4 lxml html5lib" ;;
+  esac
+  PIP_INDEX_URL=https://pypi.org/simple "\${bench_python:-python3}" -m pip install --user $verifier_compat_deps $repo_extra_deps >/tmp/pip-verifier-compat.log 2>&1 || true
+  if [ -n "$repo_torch_deps" ]; then
+    "\${bench_python:-python3}" -m pip install --user --index-url https://download.pytorch.org/whl/cpu $repo_torch_deps >/tmp/pip-verifier-torch.log 2>&1 || true
+  fi
+  "\${bench_python:-python3}" -m pip uninstall -y pytest-cov coverage >/tmp/pip-verifier-no-coverage.log 2>&1 || true
 fi
 `;
 }

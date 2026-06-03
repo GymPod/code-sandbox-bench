@@ -2,12 +2,86 @@
 
 Generated: 2026-05-29T18:40:23.302Z
 
+Updated: 2026-06-05 with Vercel SWE-Smith fallback verifier rerun findings.
+
 ## Scope
 
 - Dataset: `data/swesmith_v4_smoke100.jsonl`.
 - Task env mapping: `harbor_swesmith` (100 tasks).
 - Solve runs cover cold and warm startup for Vercel, Modal, and Daytona using `scripts/openrouter_solver.sh` through OpenRouter.
 - Verifier-only runs are intentionally excluded from this report.
+- The full provider tables below are historical 100-task results from 2026-05-29. The latest Vercel-specific rerun uses the first 20 SWE-Smith tasks and is summarized separately because it was run after Vercel fallback verifier fixes.
+
+## Latest Vercel 20-Task Rerun
+
+Command:
+
+```sh
+bun --env-file=.env ts/src/matrix.ts --providers vercel --modes cold,warm --task-index all --task-limit 20 --concurrency 2 --run-concurrency 2 --timeout-seconds 900 --solve-timeout-seconds 300 --solve-command-file /tmp/code-sandbox-bench-gold-solver.sh --suffix gold-task20-vercel-current-rerun --output results/solve-price-matrix-gold-task20-vercel-current-rerun.json
+```
+
+provider | mode | passed | elapsed seconds | estimated provider cost | artifact
+--- | --- | ---: | ---: | ---: | ---
+vercel | cold | 13/20 | 995.1 | $0.0942 | `results/ts-vercel-cold-solve-all-gold-task20-vercel-current-rerun.json`
+vercel | warm | 13/20 | 1024.0 | $0.0969 | `results/ts-vercel-warm-solve-all-gold-task20-vercel-current-rerun.json`
+
+The rerun executed Vercel cold and warm jobs concurrently (`run_concurrency=2`). The matrix runner capped Vercel task concurrency to one task per run, so effective task concurrency was `vercel-cold=1` and `vercel-warm=1`.
+
+## Cross-Provider Comparable Subset
+
+For provider comparison, the cleanest view is the subset of tasks that all providers can execute successfully. In the current task20 evidence set, this means tasks that pass on Vercel, Modal, and Daytona in both cold and warm modes. This subset has 13 tasks.
+
+Inputs for this focused comparison:
+
+- Vercel: `results/ts-vercel-cold-solve-all-gold-task20-vercel-current-rerun.json` and `results/ts-vercel-warm-solve-all-gold-task20-vercel-current-rerun.json`.
+- Modal: `results/ts-modal-cold-solve-all-gold-task20-envfix.json` and `results/ts-modal-warm-solve-all-gold-task20-envfix.json`.
+- Daytona: `results/ts-daytona-cold-solve-all-gold-task20-envfix.json` and `results/ts-daytona-warm-solve-all-gold-task20-envfix.json`.
+
+provider | mode | comparable passed | comparable seconds | mean seconds | proportional provider cost
+--- | --- | ---: | ---: | ---: | ---:
+vercel | cold | 13/13 | 659.4 | 50.7 | $0.0624
+vercel | warm | 13/13 | 670.8 | 51.6 | $0.0635
+modal | cold | 13/13 | 559.3 | 43.0 | $0.0371
+modal | warm | 13/13 | 523.5 | 40.3 | $0.0347
+daytona | cold | 13/13 | 385.8 | 29.7 | $0.0178
+daytona | warm | 13/13 | 349.8 | 26.9 | $0.0161
+
+Comparable subset tasks:
+
+- `adrienverge__yamllint.8513d9b9.combine_file__26dq3p0r`
+- `agronholm__typeguard.b6a7e438.func_basic__x36wmlww`
+- `andialbrecht__sqlparse.e57923b3.lm_rewrite__v1mce7cy`
+- `benoitc__gunicorn.bacbf8aa.func_basic__460nzix1`
+- `bottlepy__bottle.a8dfef30.func_basic__a0p07t6t`
+- `cantools__cantools.0c6a7871.combine_file__2yrjny26`
+- `cantools__cantools.0c6a7871.func_basic__d9efqrpd`
+- `cantools__cantools.0c6a7871.func_pm_ctrl_invert_if__guvo4gx7`
+- `cknd__stackprinter.219fcc52.combine_file__gymp2mmm`
+- `conan-io__conan.86f29e13.combine_file__7tlw062n`
+- `davidhalter__parso.338a5760.func_basic__ru17a9em`
+- `dbader__schedule.82a43db1.lm_rewrite__rasm7146`
+- `facelessuser__soupsieve.a8080d97.func_basic__32q3kq07`
+
+Tasks excluded from the focused comparison:
+
+- Vercel-only failures: `amueller__word_cloud.ec24191c.func_basic__b5q81acm`, `conan-io__conan.86f29e13.pr_15965`, `dask__dask.5f61e423.combine_module__dkp16syb`.
+- Vercel and Modal failures: `conan-io__conan.86f29e13.pr_11412`, `encode__starlette.db5063c2.combine_file__hrjivx2s`, `encode__starlette.db5063c2.func_basic__vehyiaux`.
+- Vercel and Daytona failures: `facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998`. A targeted Vercel probe after adding fvcore's PyTorch dependency changes this from a collection failure to real test failures, but it still does not qualify for the all-provider passing subset.
+
+Remaining failures in the 20-task Vercel slice:
+
+- `amueller__word_cloud.ec24191c.func_basic__b5q81acm`: CLI executable invocation errors.
+- `conan-io__conan.86f29e13.pr_11412` and `conan-io__conan.86f29e13.pr_15965`: real test/assertion failures after setup.
+- `dask__dask.5f61e423.combine_module__dkp16syb`: real test failures (`35 failed, 5846 passed`).
+- `encode__starlette.db5063c2.combine_file__hrjivx2s` and `encode__starlette.db5063c2.func_basic__vehyiaux`: staticfiles permission failures (`2 failed, 865 passed`).
+- `facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998`: the 20-task matrix was launched before the fvcore PyTorch patch, so it still shows torch-related collection errors in that artifact.
+
+Separate fvcore/PyTorch fidelity probe:
+
+- A repo-specific Vercel fallback now installs `torch` from `https://download.pytorch.org/whl/cpu` only for `facebookresearch__fvcore*`.
+- Targeted artifact: `results/ts-vercel-cold-fvcore-current-preparetorch.json`.
+- Result: fvcore collection errors are gone; the task reaches real tests with `155 passed, 3 failed, 2 skipped`.
+- Docker metadata for `jyangballin/swesmith.x86_64.facebookresearch_1776_fvcore.a491d5b9` shows an Ubuntu 22.04 image with Miniconda Python 3.12 and a repo-specific `/root/setup_env.sh`. The manifest includes a 6.6 GB layer, so exact-image inspection or direct reuse is expensive. The durable Vercel fidelity path remains a task-compatible prebuilt snapshot/runtime derived from each SWE-Smith Docker setup; the narrow PyTorch install improves signal without adding global setup cost.
 
 ## Task Environment Mapping
 
