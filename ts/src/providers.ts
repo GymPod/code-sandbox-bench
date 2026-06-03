@@ -19,6 +19,7 @@ export type ProviderOptions = {
   cpu: number;
   memoryGb: number;
   diskGb: number;
+  dockerfileCommands?: string[];
   prewarmProfile?: string;
   vercelSnapshotId?: string;
   modalImageId?: string;
@@ -113,6 +114,7 @@ export class LocalProvider implements Provider {
   private localize(command: string): string {
     return command
       .replace(/(?<![A-Za-z0-9_.-])\/workspace\b/g, join(this.root, "workspace"))
+      .replace(/(?<![A-Za-z0-9_.-])\/testbed\b/g, join(this.root, "testbed"))
       .replace(/(?<![A-Za-z0-9_.-])\/tests\b/g, join(this.root, "tests"))
       .replace(/(?<![A-Za-z0-9_.-])\/solution\b/g, join(this.root, "solution"))
       .replace(/(?<![A-Za-z0-9_.-])\/logs\b/g, join(this.root, "logs"))
@@ -145,20 +147,38 @@ export class VercelSdkProvider implements Provider {
     if (!this.sandbox) {
       throw new Error("Vercel sandbox not started");
     }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
+    const commandProcess = await this.sandbox.runCommand({
+      cmd: "/bin/sh",
+      args: ["-lc", command],
+      cwd,
+      sudo: true,
+      detached: true,
+      signal: AbortSignal.timeout(60_000)
+    });
+    const started = performance.now();
+    while ((performance.now() - started) / 1000 < timeoutSeconds) {
+      const remainingMs = Math.max(1000, timeoutSeconds * 1000 - (performance.now() - started));
+      const waitMs = Math.min(60_000, remainingMs);
+      try {
+        const finished = await commandProcess.wait({ signal: AbortSignal.timeout(waitMs) });
+        const [stdout, stderr] = await Promise.all([this.commandOutput(finished, "stdout"), this.commandOutput(finished, "stderr")]);
+        return { stdout, stderr, returnCode: finished.exitCode };
+      } catch {
+        await sleep(2000);
+      }
+    }
+    await commandProcess.kill("SIGTERM", { abortSignal: AbortSignal.timeout(60_000) }).catch(() => {});
+    return { stdout: "", stderr: `Command timed out after ${timeoutSeconds}s`, returnCode: 124 };
+  }
+
+  private async commandOutput(
+    command: { stdout(opts?: { signal?: AbortSignal }): Promise<string>; stderr(opts?: { signal?: AbortSignal }): Promise<string> },
+    stream: "stdout" | "stderr"
+  ): Promise<string> {
     try {
-      const process = await this.sandbox.runCommand({
-        cmd: "/bin/sh",
-        args: ["-lc", command],
-        cwd,
-        sudo: true,
-        signal: controller.signal
-      });
-      const [stdout, stderr] = await Promise.all([process.stdout(), process.stderr()]);
-      return { stdout, stderr, returnCode: process.exitCode };
-    } finally {
-      clearTimeout(timeout);
+      return await command[stream]({ signal: AbortSignal.timeout(60_000) });
+    } catch {
+      return "";
     }
   }
 
@@ -203,6 +223,7 @@ export class ModalProvider implements Provider {
     private readonly timeoutSeconds: number,
     private readonly cpu: number,
     private readonly memoryGb: number,
+    private readonly dockerfileCommands: string[] | undefined,
     private readonly prewarmProfile: string | undefined,
     private readonly modalImageId: string | undefined
   ) {}
@@ -212,7 +233,7 @@ export class ModalProvider implements Provider {
     let image: ModalImage = this.modalImageId
       ? await this.client.images.fromId(this.modalImageId)
       : this.client.images.fromRegistry(this.image);
-    const commands = debianPrewarmCommands(this.prewarmProfile);
+    const commands = this.dockerfileCommands ?? debianPrewarmCommands(this.prewarmProfile);
     if (!this.modalImageId && commands.length > 0) {
       image = await image.dockerfileCommands(commands).build(this.app);
     }
@@ -228,17 +249,23 @@ export class ModalProvider implements Provider {
     if (!this.sandbox) {
       throw new Error("Modal sandbox not started");
     }
-    const process = await this.sandbox.exec(["/bin/sh", "-lc", command], {
-      workdir: cwd,
-      timeoutMs: timeoutSeconds * 1000,
-      mode: "text"
-    });
-    const [stdout, stderr, returnCode] = await Promise.all([
-      process.stdout.readText(),
-      process.stderr.readText(),
-      process.wait()
-    ]);
-    return { stdout, stderr, returnCode };
+    return await withTimeout(
+      (async () => {
+        const process = await this.sandbox!.exec(["/bin/sh", "-lc", command], {
+          workdir: cwd,
+          timeoutMs: timeoutSeconds * 1000,
+          mode: "text"
+        });
+        const [stdout, stderr, returnCode] = await Promise.all([
+          process.stdout.readText(),
+          process.stderr.readText(),
+          process.wait()
+        ]);
+        return { stdout, stderr, returnCode };
+      })(),
+      (timeoutSeconds + 30) * 1000,
+      `Modal command timed out after ${timeoutSeconds}s`
+    );
   }
 
   async stop(): Promise<void> {
@@ -263,12 +290,18 @@ export class DaytonaProvider implements Provider {
     private readonly cpu: number,
     private readonly memoryGb: number,
     private readonly diskGb: number,
+    private readonly dockerfileCommands: string[] | undefined,
     private readonly prewarmProfile: string | undefined,
     private readonly daytonaSnapshot: string | undefined
   ) {}
 
   async start(): Promise<void> {
+    const sandboxName = `code-sandbox-bench-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const baseParams = {
+      name: sandboxName,
+      labels: {
+        app: "code-sandbox-bench"
+      },
       resources: {
         cpu: this.cpu,
         memory: this.memoryGb,
@@ -277,30 +310,42 @@ export class DaytonaProvider implements Provider {
       autoStopInterval: 0,
       autoDeleteInterval: 0
     };
-    if (this.daytonaSnapshot) {
-      this.sandbox = await this.client.create({ ...baseParams, snapshot: this.daytonaSnapshot }, { timeout: this.timeoutSeconds });
-      return;
-    }
-    const commands = debianPrewarmCommands(this.prewarmProfile);
-    this.sandbox = await this.client.create(
-      {
+    await retryDaytonaStart(async (attempt) => {
+      const params = {
         ...baseParams,
-        image: commands.length > 0 ? DaytonaImage.base(this.image).dockerfileCommands(commands) : this.image
-      },
-      { timeout: this.timeoutSeconds }
-    );
+        name: attempt === 1 ? sandboxName : `${sandboxName}-${attempt}`
+      };
+      if (this.daytonaSnapshot) {
+        this.sandbox = await this.client.create({ ...params, snapshot: this.daytonaSnapshot }, { timeout: this.timeoutSeconds });
+        return;
+      }
+      const commands = this.dockerfileCommands ?? debianPrewarmCommands(this.prewarmProfile);
+      this.sandbox = await this.client.create(
+        {
+          ...params,
+          image: commands.length > 0 ? DaytonaImage.base(this.image).dockerfileCommands(commands) : this.image
+        },
+        { timeout: this.timeoutSeconds }
+      );
+    });
   }
 
   async run(command: string, cwd: string | undefined, timeoutSeconds: number): Promise<CommandResult> {
     if (!this.sandbox) {
       throw new Error("Daytona sandbox not started");
     }
-    const response = await this.sandbox.process.executeCommand(command, cwd, undefined, timeoutSeconds);
-    return {
-      stdout: response.artifacts?.stdout ?? response.result ?? "",
-      stderr: "",
-      returnCode: response.exitCode ?? 0
-    };
+    return await withTimeout(
+      (async () => {
+        const response = await this.sandbox!.process.executeCommand(command, cwd, undefined, timeoutSeconds);
+        return {
+          stdout: response.artifacts?.stdout ?? response.result ?? "",
+          stderr: "",
+          returnCode: response.exitCode ?? 0
+        };
+      })(),
+      (timeoutSeconds + 30) * 1000,
+      `Daytona command timed out after ${timeoutSeconds}s`
+    );
   }
 
   async stop(): Promise<void> {
@@ -310,6 +355,45 @@ export class DaytonaProvider implements Provider {
     }
     await this.client[Symbol.asyncDispose]();
   }
+}
+
+async function retryDaytonaStart(action: (attempt: number) => Promise<void>): Promise<void> {
+  const attempts = 3;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await action(attempt);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts || !isRetryableDaytonaStartError(error)) {
+        throw error;
+      }
+      await sleep(attempt * 2000);
+    }
+  }
+  throw lastError;
+}
+
+function isRetryableDaytonaStartError(error: unknown): boolean {
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return /502 Bad Gateway|Sandbox with name .* already exists|rate limit|RESOURCE_EXHAUSTED|ECONNRESET|ETIMEDOUT/i.test(message);
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), milliseconds);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  });
 }
 
 export function makeProvider(
@@ -328,6 +412,7 @@ export function makeProvider(
       options.timeoutSeconds,
       options.cpu,
       options.memoryGb,
+      options.dockerfileCommands,
       options.prewarmProfile,
       options.modalImageId
     );
@@ -339,6 +424,7 @@ export function makeProvider(
       options.cpu,
       options.memoryGb,
       options.diskGb,
+      options.dockerfileCommands,
       options.prewarmProfile,
       options.daytonaSnapshot
     );

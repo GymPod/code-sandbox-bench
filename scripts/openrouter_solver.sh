@@ -16,6 +16,9 @@ MODEL = os.environ.get("OPENROUTER_MODEL", "").strip()
 MAX_STEPS = int(os.environ.get("SOLVER_MAX_STEPS", "3"))
 STEP_TIMEOUT = int(os.environ.get("SOLVER_STEP_TIMEOUT_SECONDS", "240"))
 MAX_TOKENS = int(os.environ.get("SOLVER_MAX_TOKENS", "6000"))
+TASK_WORKDIR = os.environ.get("BENCH_TASK_WORKDIR", "/workspace")
+TASK_FILE = os.environ.get("BENCH_TASK_FILE", f"{TASK_WORKDIR}/TASK.md")
+TASK_ENV_TYPE = os.environ.get("BENCH_TASK_ENV_TYPE", "terminalbench")
 
 
 def read_text(path, limit=20000):
@@ -31,7 +34,7 @@ def read_text(path, limit=20000):
 def run(command, timeout):
     process = subprocess.run(
         ["/bin/bash", "-lc", command],
-        cwd="/workspace",
+        cwd=TASK_WORKDIR,
         text=True,
         capture_output=True,
         timeout=timeout,
@@ -41,7 +44,7 @@ def run(command, timeout):
 
 def workspace_context():
     rc, stdout, stderr = run(
-        "find /workspace -maxdepth 4 -type f "
+        f"find {TASK_WORKDIR} -maxdepth 4 -type f "
         "-not -path '*/.git/*' -not -path '*/node_modules/*' "
         "-printf '%p\\n' | sort | head -200",
         30,
@@ -70,7 +73,12 @@ def workspace_context():
 
 def extract_script(content):
     match = re.search(r"```(?:bash|sh|shell)?\s*\n(.*?)```", content, re.DOTALL | re.IGNORECASE)
-    script = match.group(1) if match else content
+    if match:
+        script = match.group(1)
+    else:
+        tag_match = re.search(r"<(?:bash|sh|shell)>\s*(.*?)</(?:bash|sh|shell)>", content, re.DOTALL | re.IGNORECASE)
+        script = tag_match.group(1) if tag_match else content
+    script = re.sub(r"</?(?:bash|sh|shell|thought|analysis|code)>\s*", "", script, flags=re.IGNORECASE)
     prelude = """
 if [ "$(id -u)" -eq 0 ] || ! command -v sudo >/dev/null 2>&1 || ! sudo -n true >/dev/null 2>&1; then
   sudo() {
@@ -145,8 +153,14 @@ def chat(messages):
     return payload["choices"][0]["message"]["content"]
 
 
-task = read_text("/workspace/TASK.md", 40000)
-tests = read_text("/tests/test_outputs.py", 40000)
+task = read_text(TASK_FILE, 40000)
+tests = "\n\n".join(
+    [
+        read_text("/tests/test.sh", 40000),
+        read_text("/tests/test_outputs.py", 40000),
+        read_text("/tests/test_state.py", 40000),
+    ]
+)
 context = workspace_context()
 
 messages = [
@@ -154,8 +168,8 @@ messages = [
         "role": "system",
         "content": textwrap.dedent(
             """
-            You are an autonomous TerminalBench task solver running inside a Linux sandbox.
-            Work only in /workspace unless the task or tests require another path.
+            You are an autonomous benchmark task solver running inside a Linux sandbox.
+            Work only in the task workdir unless the task or tests require another path.
             You may install packages, edit files, build code, and create outputs.
             The base image may only include Python. If the task needs R, Java, build tools,
             autotools, or another runtime, install it noninteractively before using it.
@@ -168,6 +182,8 @@ messages = [
         "role": "user",
         "content": (
             f"Task:\n{task}\n\n"
+            f"Task env type: {TASK_ENV_TYPE}\n"
+            f"Task workdir: {TASK_WORKDIR}\n\n"
             f"Verifier tests:\n{tests}\n\n"
             f"Initial workspace context:\n{context}\n\n"
             "Write a bash script that completes the task. The verifier is bash /tests/test.sh when present, otherwise pytest /tests/test_outputs.py."

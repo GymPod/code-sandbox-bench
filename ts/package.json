@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "bench": "bun src/bench.ts",
+    "matrix": "bun src/matrix.ts",
+    "report": "bun src/report.ts",
+    "prewarm": "bun src/prewarm.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
