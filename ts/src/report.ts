@@ -58,7 +58,7 @@ function parseArgs(argv: string[]): { output: string; resultsDir: string } {
     values.set(argv[index], argv[index + 1]);
   }
   return {
-    output: values.get("--output") ?? "reports/terminalbench_provider_report.md",
+    output: values.get("--output") ?? "../reports/generated-provider-report.md",
     resultsDir: values.get("--results-dir") ?? "results"
   };
 }

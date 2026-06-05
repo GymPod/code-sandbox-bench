@@ -1,264 +1,37 @@
-# Sandbox Provider Warm/Cold Price Report
+# Sandbox Provider Report
 
-Generated: 2026-05-29T18:40:23.302Z
+Updated: 2026-06-05
 
-Updated: 2026-06-05 with Vercel SWE-Smith fallback verifier rerun findings.
+This report is split into focused documents:
 
-## Scope
+- [Cross-vendor comparison](cross-vendor-comparison.md): the apples-to-apples provider comparison, centered on the 13 tasks that pass on Vercel, Modal, and Daytona in both cold and warm modes.
+- [Per-task comparison](per-task-comparison.md): task-by-task status and timing for the current 20-task SWE-Smith evidence set.
+- [Failure modes and trade-offs](failure-modes-tradeoffs.md): environment gaps, provider-specific failures, and interpretation notes.
 
-- Dataset: `data/swesmith_v4_smoke100.jsonl`.
-- Task env mapping: `harbor_swesmith` (100 tasks).
-- Solve runs cover cold and warm startup for Vercel, Modal, and Daytona using `scripts/openrouter_solver.sh` through OpenRouter.
-- Verifier-only runs are intentionally excluded from this report.
-- The full provider tables below are historical 100-task results from 2026-05-29. The latest Vercel-specific rerun uses the first 20 SWE-Smith tasks and is summarized separately because it was run after Vercel fallback verifier fixes.
+## Evidence Set
 
-## Latest Vercel 20-Task Rerun
+The focused comparison uses the first 20 tasks from `data/swesmith_v4_smoke100.jsonl`.
 
-Command:
+Vercel uses the latest rerun after fallback verifier fixes:
 
-```sh
-bun --env-file=.env ts/src/matrix.ts --providers vercel --modes cold,warm --task-index all --task-limit 20 --concurrency 2 --run-concurrency 2 --timeout-seconds 900 --solve-timeout-seconds 300 --solve-command-file /tmp/code-sandbox-bench-gold-solver.sh --suffix gold-task20-vercel-current-rerun --output results/solve-price-matrix-gold-task20-vercel-current-rerun.json
-```
+- `results/ts-vercel-cold-solve-all-gold-task20-vercel-current-rerun.json`
+- `results/ts-vercel-warm-solve-all-gold-task20-vercel-current-rerun.json`
 
-provider | mode | passed | elapsed seconds | estimated provider cost | artifact
---- | --- | ---: | ---: | ---: | ---
-vercel | cold | 13/20 | 995.1 | $0.0942 | `results/ts-vercel-cold-solve-all-gold-task20-vercel-current-rerun.json`
-vercel | warm | 13/20 | 1024.0 | $0.0969 | `results/ts-vercel-warm-solve-all-gold-task20-vercel-current-rerun.json`
+Modal and Daytona use the latest complete task20 env-fix artifacts:
 
-The rerun executed Vercel cold and warm jobs concurrently (`run_concurrency=2`). The matrix runner capped Vercel task concurrency to one task per run, so effective task concurrency was `vercel-cold=1` and `vercel-warm=1`.
+- `results/ts-modal-cold-solve-all-gold-task20-envfix.json`
+- `results/ts-modal-warm-solve-all-gold-task20-envfix.json`
+- `results/ts-daytona-cold-solve-all-gold-task20-envfix.json`
+- `results/ts-daytona-warm-solve-all-gold-task20-envfix.json`
 
-## Cross-Provider Comparable Subset
+## Headline
 
-For provider comparison, the cleanest view is the subset of tasks that all providers can execute successfully. In the current task20 evidence set, this means tasks that pass on Vercel, Modal, and Daytona in both cold and warm modes. This subset has 13 tasks.
+On the 13-task all-provider-passing subset, Daytona is fastest and lowest estimated provider cost, Modal is next, and Vercel is slowest for this SWE-Smith fallback-runtime workload.
 
-Inputs for this focused comparison:
-
-- Vercel: `results/ts-vercel-cold-solve-all-gold-task20-vercel-current-rerun.json` and `results/ts-vercel-warm-solve-all-gold-task20-vercel-current-rerun.json`.
-- Modal: `results/ts-modal-cold-solve-all-gold-task20-envfix.json` and `results/ts-modal-warm-solve-all-gold-task20-envfix.json`.
-- Daytona: `results/ts-daytona-cold-solve-all-gold-task20-envfix.json` and `results/ts-daytona-warm-solve-all-gold-task20-envfix.json`.
-
-provider | mode | comparable passed | comparable seconds | mean seconds | proportional provider cost
---- | --- | ---: | ---: | ---: | ---:
-vercel | cold | 13/13 | 659.4 | 50.7 | $0.0624
-vercel | warm | 13/13 | 670.8 | 51.6 | $0.0635
-modal | cold | 13/13 | 559.3 | 43.0 | $0.0371
-modal | warm | 13/13 | 523.5 | 40.3 | $0.0347
-daytona | cold | 13/13 | 385.8 | 29.7 | $0.0178
-daytona | warm | 13/13 | 349.8 | 26.9 | $0.0161
-
-Comparable subset tasks:
-
-- `adrienverge__yamllint.8513d9b9.combine_file__26dq3p0r`
-- `agronholm__typeguard.b6a7e438.func_basic__x36wmlww`
-- `andialbrecht__sqlparse.e57923b3.lm_rewrite__v1mce7cy`
-- `benoitc__gunicorn.bacbf8aa.func_basic__460nzix1`
-- `bottlepy__bottle.a8dfef30.func_basic__a0p07t6t`
-- `cantools__cantools.0c6a7871.combine_file__2yrjny26`
-- `cantools__cantools.0c6a7871.func_basic__d9efqrpd`
-- `cantools__cantools.0c6a7871.func_pm_ctrl_invert_if__guvo4gx7`
-- `cknd__stackprinter.219fcc52.combine_file__gymp2mmm`
-- `conan-io__conan.86f29e13.combine_file__7tlw062n`
-- `davidhalter__parso.338a5760.func_basic__ru17a9em`
-- `dbader__schedule.82a43db1.lm_rewrite__rasm7146`
-- `facelessuser__soupsieve.a8080d97.func_basic__32q3kq07`
-
-Tasks excluded from the focused comparison:
-
-- Vercel-only failures: `amueller__word_cloud.ec24191c.func_basic__b5q81acm`, `conan-io__conan.86f29e13.pr_15965`, `dask__dask.5f61e423.combine_module__dkp16syb`.
-- Vercel and Modal failures: `conan-io__conan.86f29e13.pr_11412`, `encode__starlette.db5063c2.combine_file__hrjivx2s`, `encode__starlette.db5063c2.func_basic__vehyiaux`.
-- Vercel and Daytona failures: `facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998`. A targeted Vercel probe after adding fvcore's PyTorch dependency changes this from a collection failure to real test failures, but it still does not qualify for the all-provider passing subset.
-
-Remaining failures in the 20-task Vercel slice:
-
-- `amueller__word_cloud.ec24191c.func_basic__b5q81acm`: CLI executable invocation errors.
-- `conan-io__conan.86f29e13.pr_11412` and `conan-io__conan.86f29e13.pr_15965`: real test/assertion failures after setup.
-- `dask__dask.5f61e423.combine_module__dkp16syb`: real test failures (`35 failed, 5846 passed`).
-- `encode__starlette.db5063c2.combine_file__hrjivx2s` and `encode__starlette.db5063c2.func_basic__vehyiaux`: staticfiles permission failures (`2 failed, 865 passed`).
-- `facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998`: the 20-task matrix was launched before the fvcore PyTorch patch, so it still shows torch-related collection errors in that artifact.
-
-Separate fvcore/PyTorch fidelity probe:
-
-- A repo-specific Vercel fallback now installs `torch` from `https://download.pytorch.org/whl/cpu` only for `facebookresearch__fvcore*`.
-- Targeted artifact: `results/ts-vercel-cold-fvcore-current-preparetorch.json`.
-- Result: fvcore collection errors are gone; the task reaches real tests with `155 passed, 3 failed, 2 skipped`.
-- Docker metadata for `jyangballin/swesmith.x86_64.facebookresearch_1776_fvcore.a491d5b9` shows an Ubuntu 22.04 image with Miniconda Python 3.12 and a repo-specific `/root/setup_env.sh`. The manifest includes a 6.6 GB layer, so exact-image inspection or direct reuse is expensive. The durable Vercel fidelity path remains a task-compatible prebuilt snapshot/runtime derived from each SWE-Smith Docker setup; the narrow PyTorch install improves signal without adding global setup cost.
-
-## Task Environment Mapping
-
-env type | workdir | provider runtime mapping | notes
---- | --- | --- | ---
-`terminalbench` | `/workspace` | configured `--runtime` | Generic TerminalBench archive layout.
-`harbor_swesmith` | `/testbed` | Modal/Daytona use task `environment/Dockerfile` base image; Vercel requires a prebuilt snapshot/runtime | SWE-Smith archives include `tests/test.sh`, `solution/*`, and task Docker context.
-
-## Warm Vs Cold Price
-
-provider | cold provider cost | warm provider cost | warm minus cold | warm/cold
+provider | cold seconds | warm seconds | cold cost | warm cost
 --- | ---: | ---: | ---: | ---:
-vercel | $0.2496 | $0.1605 | -$0.0892 | 0.64
-modal | $0.2583 | $0.1815 | -$0.0768 | 0.70
-daytona | $0.0159 | $0.0152 | -$0.0007 | 0.96
+vercel | 659.4 | 670.8 | $0.0624 | $0.0635
+modal | 559.3 | 523.5 | $0.0371 | $0.0347
+daytona | 385.8 | 349.8 | $0.0178 | $0.0161
 
-## Solve Rollup
-
-provider | mode | passed | total seconds | mean seconds | median seconds | p95 seconds | estimated provider cost
---- | --- | ---: | ---: | ---: | ---: | ---: | ---:
-vercel | cold | 0/100 | 2636.47 | 26.36 | 22.81 | 132.10 | $0.2496
-vercel | warm | 0/100 | 1694.62 | 16.95 | 0.71 | 80.12 | $0.1605
-modal | cold | 0/100 | 3896.35 | 38.96 | 21.91 | 182.93 | $0.2583
-modal | warm | 0/100 | 2738.20 | 27.38 | 18.56 | 162.67 | $0.1815
-daytona | cold | 0/100 | 345.48 | 3.45 | 1.67 | 1.83 | $0.0159
-daytona | warm | 0/100 | 330.15 | 3.30 | 1.66 | 1.80 | $0.0152
-
-## Mean Phase Seconds
-
-provider | mode | start | upload | prepare | instruction write | solve | verify | stop
---- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---:
-vercel | cold | 0.52 | 7.93 | 0.99 | 2.79 | 27.62 | 0.32 | 1.28
-vercel | warm | 0.56 | 7.86 | 1.00 | 2.78 | 27.96 | 0.33 | 0.82
-modal | cold | 1.22 | 3.24 | 2.77 | 1.62 | 30.86 | 0.72 | 0.12
-modal | warm | 1.23 | 3.99 | 2.75 | 1.48 | 38.33 | 0.85 | 0.08
-daytona | cold | 3.45 | - | - | - | - | - | 0.00
-daytona | warm | 3.28 | 1.18 | 0.54 | - | - | - | 0.00
-
-## Failure Signals
-
-provider | mode | signals
---- | --- | ---
-vercel | cold | missing SWE-Smith verifier env: 58; other: 42
-vercel | warm | other: 62; missing SWE-Smith verifier env: 38
-modal | cold | missing SWE-Smith verifier env: 91; modal sandbox creation rate: 4; modal sandbox shutdown: 4; other: 1
-modal | warm | missing SWE-Smith verifier env: 51; modal sandbox creation rate: 45; modal sandbox shutdown: 3; other: 1
-daytona | cold | daytona CPU limit: 98; daytona memory limit: 1; other: 1
-daytona | warm | daytona CPU limit: 98; daytona memory limit: 1; other: 1
-
-## Per Task
-
-task | vercel cold | vercel warm | modal cold | modal warm | daytona cold | daytona warm
---- | --- | --- | --- | --- | --- | ---
-adrienverge__yamllint.8513d9b9.combine_file__26dq3p0r | fail 0.80s | fail 183.40s | fail 20.96s | fail 35.36s | fail 1.85s | fail 1.81s
-agronholm__typeguard.b6a7e438.func_basic__x36wmlww | fail 0.71s | fail 0.58s | fail 81.76s | fail 162.67s | fail 1.83s | fail 1.81s
-amueller__word_cloud.ec24191c.func_basic__b5q81acm | fail 0.72s | fail 0.69s | fail 34.37s | fail 1.37s | fail 1.84s | fail 1.82s
-andialbrecht__sqlparse.e57923b3.lm_rewrite__v1mce7cy | fail 0.78s | fail 0.72s | fail 182.76s | fail 1.37s | fail 1.83s | fail 1.80s
-benoitc__gunicorn.bacbf8aa.func_basic__460nzix1 | fail 0.74s | fail 0.74s | fail 16.31s | fail 17.72s | fail 1.83s | fail 1.80s
-bottlepy__bottle.a8dfef30.func_basic__a0p07t6t | fail 0.62s | fail 0.72s | fail 15.60s | fail 1.50s | fail 1.83s | fail 1.81s
-cantools__cantools.0c6a7871.combine_file__2yrjny26 | fail 182.89s | fail 0.75s | fail 184.13s | fail 41.85s | fail 1.82s | fail 1.80s
-cantools__cantools.0c6a7871.func_basic__d9efqrpd | fail 0.55s | fail 0.74s | fail 18.03s | fail 1.35s | fail 1.82s | fail 1.80s
-cantools__cantools.0c6a7871.func_pm_ctrl_invert_if__guvo4gx7 | fail 0.66s | fail 0.70s | fail 20.82s | fail 37.16s | fail 1.80s | fail 1.80s
-cknd__stackprinter.219fcc52.combine_file__gymp2mmm | fail 26.41s | fail 0.74s | fail 24.43s | fail 20.94s | fail 1.81s | fail 1.78s
-conan-io__conan.86f29e13.combine_file__7tlw062n | fail 0.54s | fail 0.71s | fail 21.02s | fail 22.24s | fail 1.80s | fail 1.79s
-conan-io__conan.86f29e13.pr_11412 | fail 0.63s | fail 0.72s | fail 38.51s | fail 24.78s | fail 1.80s | fail 1.77s
-conan-io__conan.86f29e13.pr_15965 | fail 0.74s | fail 0.70s | fail 20.94s | fail 1.32s | fail 1.80s | fail 1.77s
-dask__dask.5f61e423.combine_module__dkp16syb | fail 0.62s | fail 0.72s | fail 20.83s | fail 19.17s | fail 1.80s | fail 1.77s
-davidhalter__parso.338a5760.func_basic__ru17a9em | fail 0.69s | fail 0.72s | fail 24.59s | fail 1.32s | fail 1.79s | fail 1.76s
-dbader__schedule.82a43db1.lm_rewrite__rasm7146 | fail 0.62s | fail 0.71s | fail 20.49s | fail 19.02s | fail 1.78s | fail 1.77s
-encode__starlette.db5063c2.combine_file__hrjivx2s | fail 0.56s | fail 0.71s | fail 53.56s | fail 18.86s | fail 1.78s | fail 1.75s
-encode__starlette.db5063c2.func_basic__vehyiaux | fail 0.55s | fail 0.69s | fail 1.34s | fail 22.77s | fail 1.77s | fail 1.75s
-facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998 | fail 0.65s | fail 0.70s | fail 30.63s | fail 1.31s | fail 1.78s | fail 1.75s
-facelessuser__soupsieve.a8080d97.func_basic__32q3kq07 | fail 0.62s | fail 0.72s | fail 17.66s | fail 18.52s | fail 1.78s | fail 1.75s
-gawel__pyquery.811cd048.func_basic__ze33rjgg | fail 27.38s | fail 1.04s | fail 83.90s | fail 18.95s | fail 1.77s | fail 1.75s
-getmoto__moto.694ce1f4.pr_5370 | fail 0.54s | fail 0.67s | fail 35.35s | fail 1.30s | fail 1.77s | fail 1.75s
-getnikola__nikola.0f4c230e.func_pm_op_change__qsozv4it | fail 0.54s | fail 0.70s | fail 1.53s | fail 22.27s | fail 1.76s | fail 1.74s
-graphql-python__graphene.82903263.func_basic__pb3kdg4w | fail 0.58s | fail 0.69s | fail 1.28s | fail 1.31s | fail 1.76s | fail 1.75s
-gweis__isodate.17cb25eb.combine_file__52lz2sm6 | fail 23.17s | fail 0.69s | fail 24.49s | fail 1.29s | fail 1.76s | fail 1.74s
-instagram__monkeytype.70c3acf6.pr_17 | fail 25.60s | fail 0.65s | fail 17.01s | fail 1.29s | fail 1.75s | fail 1.74s
-iterative__dvc.1d6ea681.pr_8118 | fail 26.97s | fail 0.68s | fail 20.89s | fail 1.29s | fail 1.75s | fail 1.73s
-jd__tenacity.0d40e76f.combine_file__oicq97rw | fail 25.75s | fail 0.67s | fail 25.23s | fail 1.27s | fail 1.75s | fail 1.74s
-jsvine__pdfplumber.02ff4313.func_pm_ctrl_invert_if__2uc4z08w | fail 0.54s | fail 0.69s | fail 17.47s | fail 1.28s | fail 1.75s | fail 1.72s
-kayak__pypika.1c9646f0.func_basic__36ji4acq | fail 0.57s | fail 0.68s | fail 21.40s | fail 1.27s | fail 1.75s | fail 1.72s
-knio__dominate.9082227e.combine_file__4oiguynb | fail 25.70s | fail 0.67s | fail 25.62s | fail 1.27s | fail 1.75s | fail 1.72s
-lepture__mistune.bf54ef67.combine_file__92j5cljm | fail 30.72s | fail 0.66s | fail 16.33s | fail 1.28s | fail 1.74s | fail 1.72s
-life4__textdistance.c3aca916.combine_file__q3rnjr33 | fail 23.85s | fail 0.68s | fail 17.01s | fail 18.63s | fail 1.74s | fail 1.72s
-lincolnloop__python-qrcode.456b01d4.func_basic__e3jyxm8o | fail 0.55s | fail 0.63s | fail 24.60s | fail 1.25s | fail 1.71s | fail 1.72s
-mahmoud__glom.fb3c4e76.func_basic__adwelq9m | fail 21.16s | fail 0.63s | fail 22.38s | fail 22.23s | fail 1.74s | fail 1.70s
-marshmallow-code__apispec.8b421526.combine_module__nei0tk81 | fail 0.56s | fail 0.65s | fail 29.26s | fail 1.25s | fail 1.71s | fail 1.69s
-marshmallow-code__marshmallow.9716fc62.func_basic__yuvfp4u4 | fail 22.01s | fail 24.25s | fail 17.17s | fail 1.25s | fail 1.71s | fail 1.69s
-marshmallow-code__webargs.dbde72fe.func_pm_ctrl_shuffle__awp0pgqm | fail 28.45s | fail 23.70s | fail 21.59s | fail 1.26s | fail 1.71s | fail 1.71s
-mimino666__langdetect.a1598f1a.func_basic__9e17fhas | fail 23.95s | fail 0.58s | fail 19.89s | fail 1.26s | fail 1.71s | fail 1.70s
-mozilla__bleach.73871d76.func_basic__sjpd1sls | fail 143.18s | fail 0.63s | fail 36.73s | fail 183.08s | fail 1.72s | fail 1.68s
-msiemens__tinydb.10644a0e.func_basic__ovcdvpm7 | fail 21.26s | fail 0.48s | fail 20.91s | fail 1.23s | fail 1.71s | fail 1.68s
-oauthlib__oauthlib.1fd52536.func_basic__m3uxnqi6 | fail 24.20s | fail 0.59s | fail 29.38s | fail 1.23s | fail 1.70s | fail 1.68s
-pallets__click.fde47b4b.combine_file__0p8nh9y7 | fail 132.10s | fail 30.97s | fail 22.78s | fail 40.68s | fail 1.70s | fail 1.68s
-pallets__click.fde47b4b.func_basic__d37d317c | fail 0.47s | fail 151.91s | fail 182.93s | fail 1.24s | fail 1.69s | fail 1.66s
-pallets__jinja.ada0a9a6.func_basic__lz1b7mnp | fail 0.53s | fail 25.18s | fail 20.21s | fail 18.64s | fail 1.68s | fail 1.69s
-pallets__jinja.ada0a9a6.lm_rewrite__2njahj0g | fail 0.54s | fail 25.69s | fail 26.83s | fail 30.32s | fail 1.68s | fail 1.66s
-pandas-dev__pandas.95280573.func_pm_class_rm_funcs__6vchaiys | fail 0.57s | fail 0.46s | fail 20.48s | fail 19.80s | fail 1.68s | fail 1.66s
-pandas-dev__pandas.95280573.func_pm_ctrl_invert_if__iiokxmfe | fail 21.47s | fail 0.63s | fail 54.89s | fail 1.22s | fail 1.66s | fail 1.65s
-pandas-dev__pandas.95280573.func_pm_remove_assign__lbg8rvqt | fail 30.94s | fail 0.48s | fail 27.76s | fail 21.75s | fail 1.67s | fail 1.65s
-pandas-dev__pandas.95280573.func_pm_remove_cond__jfye7a5m | fail 28.56s | fail 84.54s | fail 23.90s | fail 1.23s | fail 1.67s | fail 1.66s
-pandas-dev__pandas.95280573.func_pm_remove_wrapper__qnvpskp4 | fail 0.51s | fail 0.45s | fail 28.27s | fail 1.20s | fail 1.67s | fail 1.65s
-paramiko__paramiko.23f92003.func_basic__l03s9o4u | fail 27.03s | fail 23.94s | fail 28.50s | fail 1.20s | fail 1.66s | fail 1.64s
-pdfminer__pdfminer.six.1a8bd2f7.func_basic__c9uy8eph | fail 26.65s | fail 24.54s | fail 183.03s | fail 18.43s | fail 1.66s | fail 1.64s
-pdfminer__pdfminer.six.1a8bd2f7.func_pm_remove_cond__uke8j24i | fail 0.52s | fail 58.83s | fail 20.16s | fail 1.19s | fail 1.65s | fail 1.63s
-project-monai__monai.a09c1f08.pr_6662 | fail 181.27s | fail 0.55s | fail 19.75s | fail 115.93s | fail 1.66s | fail 1.63s
-pyasn1__pyasn1.0f07d724.func_basic__f0su3xd4 | fail 24.92s | fail 27.75s | fail 20.87s | fail 23.00s | fail 1.65s | fail 1.63s
-pyasn1__pyasn1.0f07d724.lm_rewrite__knsa989d | fail 29.91s | fail 77.52s | fail 36.87s | fail 1.20s | fail 1.65s | fail 1.63s
-pydantic__pydantic.acb0f10f.combine_module__bc4i263m | fail 26.69s | fail 0.50s | fail 17.87s | fail 23.57s | fail 1.62s | fail 1.62s
-pydantic__pydantic.acb0f10f.pr_6405 | fail 0.43s | fail 0.54s | fail 20.76s | fail 23.83s | fail 1.66s | fail 1.60s
-pydata__patsy.a5d16484.func_pm_ctrl_invert_if__une2tj06 | fail 0.42s | fail 0.50s | fail 83.23s | fail 18.60s | fail 1.62s | fail 1.62s
-pydicom__pydicom.7d361b3d.combine_file__z6q8lfst | fail 26.05s | fail 0.52s | fail 19.11s | fail 1.17s | fail 1.63s | fail 1.58s
-pydicom__pydicom.7d361b3d.func_basic__crni4pcd | fail 22.97s | fail 0.52s | fail 20.45s | fail 20.75s | fail 1.63s | fail 1.59s
-pydicom__pydicom.7d361b3d.lm_rewrite__5lcjzgj0 | fail 23.14s | fail 0.42s | fail 182.94s | fail 32.14s | fail 1.62s | fail 1.62s
-pygments__pygments.27649ebb.combine_file__xs063jk5 | fail 23.12s | fail 24.57s | fail 43.97s | fail 46.93s | fail 1.60s | fail 1.58s
-pygments__pygments.27649ebb.func_pm_class_rm_base__fyh7psx1 | fail 21.63s | fail 0.41s | fail 47.59s | fail 46.66s | fail 1.63s | fail 1.62s
-pygments__pygments.27649ebb.lm_rewrite__k8ap6agg | fail 30.18s | fail 80.12s | fail 23.56s | fail 137.30s | fail 1.59s | fail 1.60s
-pylint-dev__astroid.b114f6b5.func_basic__8cdl1lj3 | fail 28.48s | fail 30.37s | fail 43.44s | fail 23.21s | fail 1.62s | fail 1.59s
-pylint-dev__astroid.b114f6b5.func_basic__v85bo3df | fail 181.91s | fail 0.41s | fail 163.67s | fail 182.91s | fail 1.58s | fail 1.59s
-pylint-dev__astroid.b114f6b5.pr_2000 | fail 23.38s | fail 22.78s | fail 37.73s | fail 182.56s | fail 1.60s | fail 1.57s
-python-hyper__h11.bed0dd4a.func_basic__rullcy0k | fail 23.39s | fail 88.30s | fail 24.32s | fail 183.33s | fail 1.58s | fail 1.57s
-python-openxml__python-docx.0cf6d71f.combine_file__alqpybf2 | fail 0.39s | fail 0.42s | fail 19.37s | fail 20.82s | fail 1.56s | fail 1.57s
-python-openxml__python-docx.0cf6d71f.func_basic__8a8ib80u | fail 23.69s | fail 0.41s | fail 20.36s | fail 1.13s | fail 1.56s | fail 1.55s
-python-openxml__python-docx.0cf6d71f.func_basic__tvp7ihho | fail 28.34s | fail 0.43s | fail 183.15s | fail 1.13s | fail 1.59s | fail 1.56s
-python-trio__trio.cfbbe2c1.combine_file__ims7s5py | fail 0.40s | fail 0.47s | fail 20.18s | fail 182.53s | fail 1.56s | fail 1.54s
-python-trio__trio.cfbbe2c1.func_pm_ctrl_invert_if__jgab1l18 | fail 18.09s | fail 0.46s | fail 17.94s | fail 17.27s | fail 1.56s | fail 1.55s
-pyupio__safety.7654596b.func_pm_remove_assign__x549pctj | fail 181.91s | fail 37.67s | fail 24.89s | fail 23.45s | fail 1.56s | fail 1.55s
-r1chardj0n3s__parse.30da9e4f.func_pm_remove_cond__k4df18dk | fail 20.96s | fail 33.92s | fail 22.99s | fail 151.12s | fail 1.56s | fail 1.54s
-rubik__radon.54b88e58.func_basic__j3ky3sut | fail 84.04s | fail 36.19s | fail 15.17s | fail 1.12s | fail 1.56s | fail 1.54s
-scanny__python-pptx.278b47b1.combine_module__pgpyms1p | fail 61.03s | fail 20.40s | fail 17.57s | fail 24.81s | fail 1.55s | fail 1.53s
-scanny__python-pptx.278b47b1.func_basic__czmi0nii | fail 24.57s | fail 70.73s | fail 24.59s | fail 24.42s | fail 1.55s | fail 1.53s
-scanny__python-pptx.278b47b1.func_basic__qaocuxju | fail 48.17s | fail 0.44s | fail 26.05s | fail 34.33s | fail 1.55s | fail 1.53s
-scanny__python-pptx.278b47b1.func_pm_ctrl_shuffle__vba0ufyh | fail 22.53s | fail 23.62s | fail 75.09s | fail 1.16s | fail 1.54s | fail 1.52s
-seperman__deepdiff.ed252022.combine_file__i0bmiysp | fail 26.79s | fail 33.17s | fail 18.15s | fail 21.95s | fail 1.54s | fail 1.52s
-seperman__deepdiff.ed252022.func_pm_op_change_const__wmy6zc4f | fail 28.68s | fail 0.39s | fail 18.06s | fail 21.72s | fail 1.53s | fail 1.51s
-seperman__deepdiff.ed252022.lm_rewrite__q9nvhqqv | fail 21.48s | fail 0.41s | fail 25.34s | fail 82.88s | fail 1.53s | fail 1.51s
-sqlfluff__sqlfluff.50a1c4b6.combine_file__rx5uafgg | fail 22.79s | fail 26.22s | fail 22.21s | fail 39.12s | fail 1.53s | fail 1.51s
-sqlfluff__sqlfluff.50a1c4b6.func_basic__ev9t5fab | fail 24.13s | fail 19.04s | fail 21.12s | fail 20.08s | fail 1.53s | fail 1.51s
-sqlfluff__sqlfluff.50a1c4b6.func_pm_op_change__n4yed6x6 | fail 21.46s | fail 24.79s | fail 32.18s | fail 23.68s | fail 1.53s | fail 1.51s
-stanfordnlp__dspy.651a4c71.func_pm_ctrl_shuffle__4czprlhs | fail 94.91s | fail 23.09s | fail 20.77s | fail 18.56s | fail 1.53s | fail 1.51s
-stanfordnlp__dspy.651a4c71.lm_rewrite__sq8htfc7 | fail 0.41s | fail 23.83s | fail 19.06s | fail 21.23s | fail 1.52s | fail 1.51s
-sunpy__sunpy.f8edfd5c.combine_module__qmglve7d | fail 26.59s | fail 22.14s | fail 15.66s | fail 1.09s | fail 1.52s | fail 1.51s
-sunpy__sunpy.f8edfd5c.func_pm_remove_assign__9ihe6yto | fail 22.83s | fail 21.40s | fail 21.61s | fail 18.56s | fail 1.52s | fail 1.50s
-suor__funcy.207a7810.func_basic__i18x9tdn | fail 26.74s | fail 0.43s | fail 21.60s | fail 1.14s | fail 1.52s | fail 1.50s
-tkrajina__gpxpy.09fc46b3.func_basic__co94ybyl | fail 44.61s | fail 22.01s | fail 104.42s | fail 1.09s | fail 1.52s | fail 1.50s
-tkrajina__gpxpy.09fc46b3.func_pm_remove_assign__rfjumbkf | fail 0.39s | fail 87.69s | fail 24.81s | fail 1.09s | fail 1.60s | fail 1.50s
-tobymao__sqlglot.036601ba.func_pm_ctrl_shuffle__upfxvtsc | fail 24.22s | fail 20.66s | fail 15.47s | fail 1.08s | fail 180.28s | fail 166.93s
-tobymao__sqlglot.036601ba.lm_rewrite__bz5prskr | fail 27.53s | fail 26.23s | fail 183.50s | fail 1.09s | fail 1.64s | fail 1.50s
-tornadoweb__tornado.d5ac65c1.func_pm_remove_wrapper__5f0gecbm | fail 29.84s | fail 33.16s | fail 20.04s | fail 1.09s | fail 1.51s | fail 1.50s
-tweepy__tweepy.91a41c6e.func_basic__41m363f2 | fail 0.38s | fail 20.12s | fail 19.86s | fail 1.08s | fail 1.54s | fail 1.49s
-weaveworks__grafanalib.5c3b17ed.func_pm_remove_loop__mk5qowxt | fail 22.40s | fail 23.05s | fail 1.11s | fail 1.07s | fail 1.51s | fail 1.67s
-
-## Failed Tasks
-
-- vercel cold: adrienverge__yamllint.8513d9b9.combine_file__26dq3p0r, agronholm__typeguard.b6a7e438.func_basic__x36wmlww, amueller__word_cloud.ec24191c.func_basic__b5q81acm, andialbrecht__sqlparse.e57923b3.lm_rewrite__v1mce7cy, benoitc__gunicorn.bacbf8aa.func_basic__460nzix1, bottlepy__bottle.a8dfef30.func_basic__a0p07t6t, cantools__cantools.0c6a7871.combine_file__2yrjny26, cantools__cantools.0c6a7871.func_basic__d9efqrpd, cantools__cantools.0c6a7871.func_pm_ctrl_invert_if__guvo4gx7, cknd__stackprinter.219fcc52.combine_file__gymp2mmm, conan-io__conan.86f29e13.combine_file__7tlw062n, conan-io__conan.86f29e13.pr_11412, conan-io__conan.86f29e13.pr_15965, dask__dask.5f61e423.combine_module__dkp16syb, davidhalter__parso.338a5760.func_basic__ru17a9em, dbader__schedule.82a43db1.lm_rewrite__rasm7146, encode__starlette.db5063c2.combine_file__hrjivx2s, encode__starlette.db5063c2.func_basic__vehyiaux, facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998, facelessuser__soupsieve.a8080d97.func_basic__32q3kq07, gawel__pyquery.811cd048.func_basic__ze33rjgg, getmoto__moto.694ce1f4.pr_5370, getnikola__nikola.0f4c230e.func_pm_op_change__qsozv4it, graphql-python__graphene.82903263.func_basic__pb3kdg4w, gweis__isodate.17cb25eb.combine_file__52lz2sm6, instagram__monkeytype.70c3acf6.pr_17, iterative__dvc.1d6ea681.pr_8118, jd__tenacity.0d40e76f.combine_file__oicq97rw, jsvine__pdfplumber.02ff4313.func_pm_ctrl_invert_if__2uc4z08w, kayak__pypika.1c9646f0.func_basic__36ji4acq, knio__dominate.9082227e.combine_file__4oiguynb, lepture__mistune.bf54ef67.combine_file__92j5cljm, life4__textdistance.c3aca916.combine_file__q3rnjr33, lincolnloop__python-qrcode.456b01d4.func_basic__e3jyxm8o, mahmoud__glom.fb3c4e76.func_basic__adwelq9m, marshmallow-code__apispec.8b421526.combine_module__nei0tk81, marshmallow-code__marshmallow.9716fc62.func_basic__yuvfp4u4, marshmallow-code__webargs.dbde72fe.func_pm_ctrl_shuffle__awp0pgqm, mimino666__langdetect.a1598f1a.func_basic__9e17fhas, mozilla__bleach.73871d76.func_basic__sjpd1sls, msiemens__tinydb.10644a0e.func_basic__ovcdvpm7, oauthlib__oauthlib.1fd52536.func_basic__m3uxnqi6, pallets__click.fde47b4b.combine_file__0p8nh9y7, pallets__click.fde47b4b.func_basic__d37d317c, pallets__jinja.ada0a9a6.func_basic__lz1b7mnp, pallets__jinja.ada0a9a6.lm_rewrite__2njahj0g, pandas-dev__pandas.95280573.func_pm_class_rm_funcs__6vchaiys, pandas-dev__pandas.95280573.func_pm_ctrl_invert_if__iiokxmfe, pandas-dev__pandas.95280573.func_pm_remove_assign__lbg8rvqt, pandas-dev__pandas.95280573.func_pm_remove_cond__jfye7a5m, pandas-dev__pandas.95280573.func_pm_remove_wrapper__qnvpskp4, paramiko__paramiko.23f92003.func_basic__l03s9o4u, pdfminer__pdfminer.six.1a8bd2f7.func_basic__c9uy8eph, pdfminer__pdfminer.six.1a8bd2f7.func_pm_remove_cond__uke8j24i, project-monai__monai.a09c1f08.pr_6662, pyasn1__pyasn1.0f07d724.func_basic__f0su3xd4, pyasn1__pyasn1.0f07d724.lm_rewrite__knsa989d, pydantic__pydantic.acb0f10f.combine_module__bc4i263m, pydantic__pydantic.acb0f10f.pr_6405, pydata__patsy.a5d16484.func_pm_ctrl_invert_if__une2tj06, pydicom__pydicom.7d361b3d.combine_file__z6q8lfst, pydicom__pydicom.7d361b3d.func_basic__crni4pcd, pydicom__pydicom.7d361b3d.lm_rewrite__5lcjzgj0, pygments__pygments.27649ebb.combine_file__xs063jk5, pygments__pygments.27649ebb.func_pm_class_rm_base__fyh7psx1, pygments__pygments.27649ebb.lm_rewrite__k8ap6agg, pylint-dev__astroid.b114f6b5.func_basic__8cdl1lj3, pylint-dev__astroid.b114f6b5.func_basic__v85bo3df, pylint-dev__astroid.b114f6b5.pr_2000, python-hyper__h11.bed0dd4a.func_basic__rullcy0k, python-openxml__python-docx.0cf6d71f.combine_file__alqpybf2, python-openxml__python-docx.0cf6d71f.func_basic__8a8ib80u, python-openxml__python-docx.0cf6d71f.func_basic__tvp7ihho, python-trio__trio.cfbbe2c1.combine_file__ims7s5py, python-trio__trio.cfbbe2c1.func_pm_ctrl_invert_if__jgab1l18, pyupio__safety.7654596b.func_pm_remove_assign__x549pctj, r1chardj0n3s__parse.30da9e4f.func_pm_remove_cond__k4df18dk, rubik__radon.54b88e58.func_basic__j3ky3sut, scanny__python-pptx.278b47b1.combine_module__pgpyms1p, scanny__python-pptx.278b47b1.func_basic__czmi0nii, scanny__python-pptx.278b47b1.func_basic__qaocuxju, scanny__python-pptx.278b47b1.func_pm_ctrl_shuffle__vba0ufyh, seperman__deepdiff.ed252022.combine_file__i0bmiysp, seperman__deepdiff.ed252022.func_pm_op_change_const__wmy6zc4f, seperman__deepdiff.ed252022.lm_rewrite__q9nvhqqv, sqlfluff__sqlfluff.50a1c4b6.combine_file__rx5uafgg, sqlfluff__sqlfluff.50a1c4b6.func_basic__ev9t5fab, sqlfluff__sqlfluff.50a1c4b6.func_pm_op_change__n4yed6x6, stanfordnlp__dspy.651a4c71.func_pm_ctrl_shuffle__4czprlhs, stanfordnlp__dspy.651a4c71.lm_rewrite__sq8htfc7, sunpy__sunpy.f8edfd5c.combine_module__qmglve7d, sunpy__sunpy.f8edfd5c.func_pm_remove_assign__9ihe6yto, suor__funcy.207a7810.func_basic__i18x9tdn, tkrajina__gpxpy.09fc46b3.func_basic__co94ybyl, tkrajina__gpxpy.09fc46b3.func_pm_remove_assign__rfjumbkf, tobymao__sqlglot.036601ba.func_pm_ctrl_shuffle__upfxvtsc, tobymao__sqlglot.036601ba.lm_rewrite__bz5prskr, tornadoweb__tornado.d5ac65c1.func_pm_remove_wrapper__5f0gecbm, tweepy__tweepy.91a41c6e.func_basic__41m363f2, weaveworks__grafanalib.5c3b17ed.func_pm_remove_loop__mk5qowxt
-- vercel warm: adrienverge__yamllint.8513d9b9.combine_file__26dq3p0r, agronholm__typeguard.b6a7e438.func_basic__x36wmlww, amueller__word_cloud.ec24191c.func_basic__b5q81acm, andialbrecht__sqlparse.e57923b3.lm_rewrite__v1mce7cy, benoitc__gunicorn.bacbf8aa.func_basic__460nzix1, bottlepy__bottle.a8dfef30.func_basic__a0p07t6t, cantools__cantools.0c6a7871.combine_file__2yrjny26, cantools__cantools.0c6a7871.func_basic__d9efqrpd, cantools__cantools.0c6a7871.func_pm_ctrl_invert_if__guvo4gx7, cknd__stackprinter.219fcc52.combine_file__gymp2mmm, conan-io__conan.86f29e13.combine_file__7tlw062n, conan-io__conan.86f29e13.pr_11412, conan-io__conan.86f29e13.pr_15965, dask__dask.5f61e423.combine_module__dkp16syb, davidhalter__parso.338a5760.func_basic__ru17a9em, dbader__schedule.82a43db1.lm_rewrite__rasm7146, encode__starlette.db5063c2.combine_file__hrjivx2s, encode__starlette.db5063c2.func_basic__vehyiaux, facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998, facelessuser__soupsieve.a8080d97.func_basic__32q3kq07, gawel__pyquery.811cd048.func_basic__ze33rjgg, getmoto__moto.694ce1f4.pr_5370, getnikola__nikola.0f4c230e.func_pm_op_change__qsozv4it, graphql-python__graphene.82903263.func_basic__pb3kdg4w, gweis__isodate.17cb25eb.combine_file__52lz2sm6, instagram__monkeytype.70c3acf6.pr_17, iterative__dvc.1d6ea681.pr_8118, jd__tenacity.0d40e76f.combine_file__oicq97rw, jsvine__pdfplumber.02ff4313.func_pm_ctrl_invert_if__2uc4z08w, kayak__pypika.1c9646f0.func_basic__36ji4acq, knio__dominate.9082227e.combine_file__4oiguynb, lepture__mistune.bf54ef67.combine_file__92j5cljm, life4__textdistance.c3aca916.combine_file__q3rnjr33, lincolnloop__python-qrcode.456b01d4.func_basic__e3jyxm8o, mahmoud__glom.fb3c4e76.func_basic__adwelq9m, marshmallow-code__apispec.8b421526.combine_module__nei0tk81, marshmallow-code__marshmallow.9716fc62.func_basic__yuvfp4u4, marshmallow-code__webargs.dbde72fe.func_pm_ctrl_shuffle__awp0pgqm, mimino666__langdetect.a1598f1a.func_basic__9e17fhas, mozilla__bleach.73871d76.func_basic__sjpd1sls, msiemens__tinydb.10644a0e.func_basic__ovcdvpm7, oauthlib__oauthlib.1fd52536.func_basic__m3uxnqi6, pallets__click.fde47b4b.combine_file__0p8nh9y7, pallets__click.fde47b4b.func_basic__d37d317c, pallets__jinja.ada0a9a6.func_basic__lz1b7mnp, pallets__jinja.ada0a9a6.lm_rewrite__2njahj0g, pandas-dev__pandas.95280573.func_pm_class_rm_funcs__6vchaiys, pandas-dev__pandas.95280573.func_pm_ctrl_invert_if__iiokxmfe, pandas-dev__pandas.95280573.func_pm_remove_assign__lbg8rvqt, pandas-dev__pandas.95280573.func_pm_remove_cond__jfye7a5m, pandas-dev__pandas.95280573.func_pm_remove_wrapper__qnvpskp4, paramiko__paramiko.23f92003.func_basic__l03s9o4u, pdfminer__pdfminer.six.1a8bd2f7.func_basic__c9uy8eph, pdfminer__pdfminer.six.1a8bd2f7.func_pm_remove_cond__uke8j24i, project-monai__monai.a09c1f08.pr_6662, pyasn1__pyasn1.0f07d724.func_basic__f0su3xd4, pyasn1__pyasn1.0f07d724.lm_rewrite__knsa989d, pydantic__pydantic.acb0f10f.combine_module__bc4i263m, pydantic__pydantic.acb0f10f.pr_6405, pydata__patsy.a5d16484.func_pm_ctrl_invert_if__une2tj06, pydicom__pydicom.7d361b3d.combine_file__z6q8lfst, pydicom__pydicom.7d361b3d.func_basic__crni4pcd, pydicom__pydicom.7d361b3d.lm_rewrite__5lcjzgj0, pygments__pygments.27649ebb.combine_file__xs063jk5, pygments__pygments.27649ebb.func_pm_class_rm_base__fyh7psx1, pygments__pygments.27649ebb.lm_rewrite__k8ap6agg, pylint-dev__astroid.b114f6b5.func_basic__8cdl1lj3, pylint-dev__astroid.b114f6b5.func_basic__v85bo3df, pylint-dev__astroid.b114f6b5.pr_2000, python-hyper__h11.bed0dd4a.func_basic__rullcy0k, python-openxml__python-docx.0cf6d71f.combine_file__alqpybf2, python-openxml__python-docx.0cf6d71f.func_basic__8a8ib80u, python-openxml__python-docx.0cf6d71f.func_basic__tvp7ihho, python-trio__trio.cfbbe2c1.combine_file__ims7s5py, python-trio__trio.cfbbe2c1.func_pm_ctrl_invert_if__jgab1l18, pyupio__safety.7654596b.func_pm_remove_assign__x549pctj, r1chardj0n3s__parse.30da9e4f.func_pm_remove_cond__k4df18dk, rubik__radon.54b88e58.func_basic__j3ky3sut, scanny__python-pptx.278b47b1.combine_module__pgpyms1p, scanny__python-pptx.278b47b1.func_basic__czmi0nii, scanny__python-pptx.278b47b1.func_basic__qaocuxju, scanny__python-pptx.278b47b1.func_pm_ctrl_shuffle__vba0ufyh, seperman__deepdiff.ed252022.combine_file__i0bmiysp, seperman__deepdiff.ed252022.func_pm_op_change_const__wmy6zc4f, seperman__deepdiff.ed252022.lm_rewrite__q9nvhqqv, sqlfluff__sqlfluff.50a1c4b6.combine_file__rx5uafgg, sqlfluff__sqlfluff.50a1c4b6.func_basic__ev9t5fab, sqlfluff__sqlfluff.50a1c4b6.func_pm_op_change__n4yed6x6, stanfordnlp__dspy.651a4c71.func_pm_ctrl_shuffle__4czprlhs, stanfordnlp__dspy.651a4c71.lm_rewrite__sq8htfc7, sunpy__sunpy.f8edfd5c.combine_module__qmglve7d, sunpy__sunpy.f8edfd5c.func_pm_remove_assign__9ihe6yto, suor__funcy.207a7810.func_basic__i18x9tdn, tkrajina__gpxpy.09fc46b3.func_basic__co94ybyl, tkrajina__gpxpy.09fc46b3.func_pm_remove_assign__rfjumbkf, tobymao__sqlglot.036601ba.func_pm_ctrl_shuffle__upfxvtsc, tobymao__sqlglot.036601ba.lm_rewrite__bz5prskr, tornadoweb__tornado.d5ac65c1.func_pm_remove_wrapper__5f0gecbm, tweepy__tweepy.91a41c6e.func_basic__41m363f2, weaveworks__grafanalib.5c3b17ed.func_pm_remove_loop__mk5qowxt
-- modal cold: adrienverge__yamllint.8513d9b9.combine_file__26dq3p0r, agronholm__typeguard.b6a7e438.func_basic__x36wmlww, amueller__word_cloud.ec24191c.func_basic__b5q81acm, andialbrecht__sqlparse.e57923b3.lm_rewrite__v1mce7cy, benoitc__gunicorn.bacbf8aa.func_basic__460nzix1, bottlepy__bottle.a8dfef30.func_basic__a0p07t6t, cantools__cantools.0c6a7871.combine_file__2yrjny26, cantools__cantools.0c6a7871.func_basic__d9efqrpd, cantools__cantools.0c6a7871.func_pm_ctrl_invert_if__guvo4gx7, cknd__stackprinter.219fcc52.combine_file__gymp2mmm, conan-io__conan.86f29e13.combine_file__7tlw062n, conan-io__conan.86f29e13.pr_11412, conan-io__conan.86f29e13.pr_15965, dask__dask.5f61e423.combine_module__dkp16syb, davidhalter__parso.338a5760.func_basic__ru17a9em, dbader__schedule.82a43db1.lm_rewrite__rasm7146, encode__starlette.db5063c2.combine_file__hrjivx2s, encode__starlette.db5063c2.func_basic__vehyiaux, facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998, facelessuser__soupsieve.a8080d97.func_basic__32q3kq07, gawel__pyquery.811cd048.func_basic__ze33rjgg, getmoto__moto.694ce1f4.pr_5370, getnikola__nikola.0f4c230e.func_pm_op_change__qsozv4it, graphql-python__graphene.82903263.func_basic__pb3kdg4w, gweis__isodate.17cb25eb.combine_file__52lz2sm6, instagram__monkeytype.70c3acf6.pr_17, iterative__dvc.1d6ea681.pr_8118, jd__tenacity.0d40e76f.combine_file__oicq97rw, jsvine__pdfplumber.02ff4313.func_pm_ctrl_invert_if__2uc4z08w, kayak__pypika.1c9646f0.func_basic__36ji4acq, knio__dominate.9082227e.combine_file__4oiguynb, lepture__mistune.bf54ef67.combine_file__92j5cljm, life4__textdistance.c3aca916.combine_file__q3rnjr33, lincolnloop__python-qrcode.456b01d4.func_basic__e3jyxm8o, mahmoud__glom.fb3c4e76.func_basic__adwelq9m, marshmallow-code__apispec.8b421526.combine_module__nei0tk81, marshmallow-code__marshmallow.9716fc62.func_basic__yuvfp4u4, marshmallow-code__webargs.dbde72fe.func_pm_ctrl_shuffle__awp0pgqm, mimino666__langdetect.a1598f1a.func_basic__9e17fhas, mozilla__bleach.73871d76.func_basic__sjpd1sls, msiemens__tinydb.10644a0e.func_basic__ovcdvpm7, oauthlib__oauthlib.1fd52536.func_basic__m3uxnqi6, pallets__click.fde47b4b.combine_file__0p8nh9y7, pallets__click.fde47b4b.func_basic__d37d317c, pallets__jinja.ada0a9a6.func_basic__lz1b7mnp, pallets__jinja.ada0a9a6.lm_rewrite__2njahj0g, pandas-dev__pandas.95280573.func_pm_class_rm_funcs__6vchaiys, pandas-dev__pandas.95280573.func_pm_ctrl_invert_if__iiokxmfe, pandas-dev__pandas.95280573.func_pm_remove_assign__lbg8rvqt, pandas-dev__pandas.95280573.func_pm_remove_cond__jfye7a5m, pandas-dev__pandas.95280573.func_pm_remove_wrapper__qnvpskp4, paramiko__paramiko.23f92003.func_basic__l03s9o4u, pdfminer__pdfminer.six.1a8bd2f7.func_basic__c9uy8eph, pdfminer__pdfminer.six.1a8bd2f7.func_pm_remove_cond__uke8j24i, project-monai__monai.a09c1f08.pr_6662, pyasn1__pyasn1.0f07d724.func_basic__f0su3xd4, pyasn1__pyasn1.0f07d724.lm_rewrite__knsa989d, pydantic__pydantic.acb0f10f.combine_module__bc4i263m, pydantic__pydantic.acb0f10f.pr_6405, pydata__patsy.a5d16484.func_pm_ctrl_invert_if__une2tj06, pydicom__pydicom.7d361b3d.combine_file__z6q8lfst, pydicom__pydicom.7d361b3d.func_basic__crni4pcd, pydicom__pydicom.7d361b3d.lm_rewrite__5lcjzgj0, pygments__pygments.27649ebb.combine_file__xs063jk5, pygments__pygments.27649ebb.func_pm_class_rm_base__fyh7psx1, pygments__pygments.27649ebb.lm_rewrite__k8ap6agg, pylint-dev__astroid.b114f6b5.func_basic__8cdl1lj3, pylint-dev__astroid.b114f6b5.func_basic__v85bo3df, pylint-dev__astroid.b114f6b5.pr_2000, python-hyper__h11.bed0dd4a.func_basic__rullcy0k, python-openxml__python-docx.0cf6d71f.combine_file__alqpybf2, python-openxml__python-docx.0cf6d71f.func_basic__8a8ib80u, python-openxml__python-docx.0cf6d71f.func_basic__tvp7ihho, python-trio__trio.cfbbe2c1.combine_file__ims7s5py, python-trio__trio.cfbbe2c1.func_pm_ctrl_invert_if__jgab1l18, pyupio__safety.7654596b.func_pm_remove_assign__x549pctj, r1chardj0n3s__parse.30da9e4f.func_pm_remove_cond__k4df18dk, rubik__radon.54b88e58.func_basic__j3ky3sut, scanny__python-pptx.278b47b1.combine_module__pgpyms1p, scanny__python-pptx.278b47b1.func_basic__czmi0nii, scanny__python-pptx.278b47b1.func_basic__qaocuxju, scanny__python-pptx.278b47b1.func_pm_ctrl_shuffle__vba0ufyh, seperman__deepdiff.ed252022.combine_file__i0bmiysp, seperman__deepdiff.ed252022.func_pm_op_change_const__wmy6zc4f, seperman__deepdiff.ed252022.lm_rewrite__q9nvhqqv, sqlfluff__sqlfluff.50a1c4b6.combine_file__rx5uafgg, sqlfluff__sqlfluff.50a1c4b6.func_basic__ev9t5fab, sqlfluff__sqlfluff.50a1c4b6.func_pm_op_change__n4yed6x6, stanfordnlp__dspy.651a4c71.func_pm_ctrl_shuffle__4czprlhs, stanfordnlp__dspy.651a4c71.lm_rewrite__sq8htfc7, sunpy__sunpy.f8edfd5c.combine_module__qmglve7d, sunpy__sunpy.f8edfd5c.func_pm_remove_assign__9ihe6yto, suor__funcy.207a7810.func_basic__i18x9tdn, tkrajina__gpxpy.09fc46b3.func_basic__co94ybyl, tkrajina__gpxpy.09fc46b3.func_pm_remove_assign__rfjumbkf, tobymao__sqlglot.036601ba.func_pm_ctrl_shuffle__upfxvtsc, tobymao__sqlglot.036601ba.lm_rewrite__bz5prskr, tornadoweb__tornado.d5ac65c1.func_pm_remove_wrapper__5f0gecbm, tweepy__tweepy.91a41c6e.func_basic__41m363f2, weaveworks__grafanalib.5c3b17ed.func_pm_remove_loop__mk5qowxt
-- modal warm: adrienverge__yamllint.8513d9b9.combine_file__26dq3p0r, agronholm__typeguard.b6a7e438.func_basic__x36wmlww, amueller__word_cloud.ec24191c.func_basic__b5q81acm, andialbrecht__sqlparse.e57923b3.lm_rewrite__v1mce7cy, benoitc__gunicorn.bacbf8aa.func_basic__460nzix1, bottlepy__bottle.a8dfef30.func_basic__a0p07t6t, cantools__cantools.0c6a7871.combine_file__2yrjny26, cantools__cantools.0c6a7871.func_basic__d9efqrpd, cantools__cantools.0c6a7871.func_pm_ctrl_invert_if__guvo4gx7, cknd__stackprinter.219fcc52.combine_file__gymp2mmm, conan-io__conan.86f29e13.combine_file__7tlw062n, conan-io__conan.86f29e13.pr_11412, conan-io__conan.86f29e13.pr_15965, dask__dask.5f61e423.combine_module__dkp16syb, davidhalter__parso.338a5760.func_basic__ru17a9em, dbader__schedule.82a43db1.lm_rewrite__rasm7146, encode__starlette.db5063c2.combine_file__hrjivx2s, encode__starlette.db5063c2.func_basic__vehyiaux, facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998, facelessuser__soupsieve.a8080d97.func_basic__32q3kq07, gawel__pyquery.811cd048.func_basic__ze33rjgg, getmoto__moto.694ce1f4.pr_5370, getnikola__nikola.0f4c230e.func_pm_op_change__qsozv4it, graphql-python__graphene.82903263.func_basic__pb3kdg4w, gweis__isodate.17cb25eb.combine_file__52lz2sm6, instagram__monkeytype.70c3acf6.pr_17, iterative__dvc.1d6ea681.pr_8118, jd__tenacity.0d40e76f.combine_file__oicq97rw, jsvine__pdfplumber.02ff4313.func_pm_ctrl_invert_if__2uc4z08w, kayak__pypika.1c9646f0.func_basic__36ji4acq, knio__dominate.9082227e.combine_file__4oiguynb, lepture__mistune.bf54ef67.combine_file__92j5cljm, life4__textdistance.c3aca916.combine_file__q3rnjr33, lincolnloop__python-qrcode.456b01d4.func_basic__e3jyxm8o, mahmoud__glom.fb3c4e76.func_basic__adwelq9m, marshmallow-code__apispec.8b421526.combine_module__nei0tk81, marshmallow-code__marshmallow.9716fc62.func_basic__yuvfp4u4, marshmallow-code__webargs.dbde72fe.func_pm_ctrl_shuffle__awp0pgqm, mimino666__langdetect.a1598f1a.func_basic__9e17fhas, mozilla__bleach.73871d76.func_basic__sjpd1sls, msiemens__tinydb.10644a0e.func_basic__ovcdvpm7, oauthlib__oauthlib.1fd52536.func_basic__m3uxnqi6, pallets__click.fde47b4b.combine_file__0p8nh9y7, pallets__click.fde47b4b.func_basic__d37d317c, pallets__jinja.ada0a9a6.func_basic__lz1b7mnp, pallets__jinja.ada0a9a6.lm_rewrite__2njahj0g, pandas-dev__pandas.95280573.func_pm_class_rm_funcs__6vchaiys, pandas-dev__pandas.95280573.func_pm_ctrl_invert_if__iiokxmfe, pandas-dev__pandas.95280573.func_pm_remove_assign__lbg8rvqt, pandas-dev__pandas.95280573.func_pm_remove_cond__jfye7a5m, pandas-dev__pandas.95280573.func_pm_remove_wrapper__qnvpskp4, paramiko__paramiko.23f92003.func_basic__l03s9o4u, pdfminer__pdfminer.six.1a8bd2f7.func_basic__c9uy8eph, pdfminer__pdfminer.six.1a8bd2f7.func_pm_remove_cond__uke8j24i, project-monai__monai.a09c1f08.pr_6662, pyasn1__pyasn1.0f07d724.func_basic__f0su3xd4, pyasn1__pyasn1.0f07d724.lm_rewrite__knsa989d, pydantic__pydantic.acb0f10f.combine_module__bc4i263m, pydantic__pydantic.acb0f10f.pr_6405, pydata__patsy.a5d16484.func_pm_ctrl_invert_if__une2tj06, pydicom__pydicom.7d361b3d.combine_file__z6q8lfst, pydicom__pydicom.7d361b3d.func_basic__crni4pcd, pydicom__pydicom.7d361b3d.lm_rewrite__5lcjzgj0, pygments__pygments.27649ebb.combine_file__xs063jk5, pygments__pygments.27649ebb.func_pm_class_rm_base__fyh7psx1, pygments__pygments.27649ebb.lm_rewrite__k8ap6agg, pylint-dev__astroid.b114f6b5.func_basic__8cdl1lj3, pylint-dev__astroid.b114f6b5.func_basic__v85bo3df, pylint-dev__astroid.b114f6b5.pr_2000, python-hyper__h11.bed0dd4a.func_basic__rullcy0k, python-openxml__python-docx.0cf6d71f.combine_file__alqpybf2, python-openxml__python-docx.0cf6d71f.func_basic__8a8ib80u, python-openxml__python-docx.0cf6d71f.func_basic__tvp7ihho, python-trio__trio.cfbbe2c1.combine_file__ims7s5py, python-trio__trio.cfbbe2c1.func_pm_ctrl_invert_if__jgab1l18, pyupio__safety.7654596b.func_pm_remove_assign__x549pctj, r1chardj0n3s__parse.30da9e4f.func_pm_remove_cond__k4df18dk, rubik__radon.54b88e58.func_basic__j3ky3sut, scanny__python-pptx.278b47b1.combine_module__pgpyms1p, scanny__python-pptx.278b47b1.func_basic__czmi0nii, scanny__python-pptx.278b47b1.func_basic__qaocuxju, scanny__python-pptx.278b47b1.func_pm_ctrl_shuffle__vba0ufyh, seperman__deepdiff.ed252022.combine_file__i0bmiysp, seperman__deepdiff.ed252022.func_pm_op_change_const__wmy6zc4f, seperman__deepdiff.ed252022.lm_rewrite__q9nvhqqv, sqlfluff__sqlfluff.50a1c4b6.combine_file__rx5uafgg, sqlfluff__sqlfluff.50a1c4b6.func_basic__ev9t5fab, sqlfluff__sqlfluff.50a1c4b6.func_pm_op_change__n4yed6x6, stanfordnlp__dspy.651a4c71.func_pm_ctrl_shuffle__4czprlhs, stanfordnlp__dspy.651a4c71.lm_rewrite__sq8htfc7, sunpy__sunpy.f8edfd5c.combine_module__qmglve7d, sunpy__sunpy.f8edfd5c.func_pm_remove_assign__9ihe6yto, suor__funcy.207a7810.func_basic__i18x9tdn, tkrajina__gpxpy.09fc46b3.func_basic__co94ybyl, tkrajina__gpxpy.09fc46b3.func_pm_remove_assign__rfjumbkf, tobymao__sqlglot.036601ba.func_pm_ctrl_shuffle__upfxvtsc, tobymao__sqlglot.036601ba.lm_rewrite__bz5prskr, tornadoweb__tornado.d5ac65c1.func_pm_remove_wrapper__5f0gecbm, tweepy__tweepy.91a41c6e.func_basic__41m363f2, weaveworks__grafanalib.5c3b17ed.func_pm_remove_loop__mk5qowxt
-- daytona cold: adrienverge__yamllint.8513d9b9.combine_file__26dq3p0r, agronholm__typeguard.b6a7e438.func_basic__x36wmlww, amueller__word_cloud.ec24191c.func_basic__b5q81acm, andialbrecht__sqlparse.e57923b3.lm_rewrite__v1mce7cy, benoitc__gunicorn.bacbf8aa.func_basic__460nzix1, bottlepy__bottle.a8dfef30.func_basic__a0p07t6t, cantools__cantools.0c6a7871.combine_file__2yrjny26, cantools__cantools.0c6a7871.func_basic__d9efqrpd, cantools__cantools.0c6a7871.func_pm_ctrl_invert_if__guvo4gx7, cknd__stackprinter.219fcc52.combine_file__gymp2mmm, conan-io__conan.86f29e13.combine_file__7tlw062n, conan-io__conan.86f29e13.pr_11412, conan-io__conan.86f29e13.pr_15965, dask__dask.5f61e423.combine_module__dkp16syb, davidhalter__parso.338a5760.func_basic__ru17a9em, dbader__schedule.82a43db1.lm_rewrite__rasm7146, encode__starlette.db5063c2.combine_file__hrjivx2s, encode__starlette.db5063c2.func_basic__vehyiaux, facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998, facelessuser__soupsieve.a8080d97.func_basic__32q3kq07, gawel__pyquery.811cd048.func_basic__ze33rjgg, getmoto__moto.694ce1f4.pr_5370, getnikola__nikola.0f4c230e.func_pm_op_change__qsozv4it, graphql-python__graphene.82903263.func_basic__pb3kdg4w, gweis__isodate.17cb25eb.combine_file__52lz2sm6, instagram__monkeytype.70c3acf6.pr_17, iterative__dvc.1d6ea681.pr_8118, jd__tenacity.0d40e76f.combine_file__oicq97rw, jsvine__pdfplumber.02ff4313.func_pm_ctrl_invert_if__2uc4z08w, kayak__pypika.1c9646f0.func_basic__36ji4acq, knio__dominate.9082227e.combine_file__4oiguynb, lepture__mistune.bf54ef67.combine_file__92j5cljm, life4__textdistance.c3aca916.combine_file__q3rnjr33, lincolnloop__python-qrcode.456b01d4.func_basic__e3jyxm8o, mahmoud__glom.fb3c4e76.func_basic__adwelq9m, marshmallow-code__apispec.8b421526.combine_module__nei0tk81, marshmallow-code__marshmallow.9716fc62.func_basic__yuvfp4u4, marshmallow-code__webargs.dbde72fe.func_pm_ctrl_shuffle__awp0pgqm, mimino666__langdetect.a1598f1a.func_basic__9e17fhas, mozilla__bleach.73871d76.func_basic__sjpd1sls, msiemens__tinydb.10644a0e.func_basic__ovcdvpm7, oauthlib__oauthlib.1fd52536.func_basic__m3uxnqi6, pallets__click.fde47b4b.combine_file__0p8nh9y7, pallets__click.fde47b4b.func_basic__d37d317c, pallets__jinja.ada0a9a6.func_basic__lz1b7mnp, pallets__jinja.ada0a9a6.lm_rewrite__2njahj0g, pandas-dev__pandas.95280573.func_pm_class_rm_funcs__6vchaiys, pandas-dev__pandas.95280573.func_pm_ctrl_invert_if__iiokxmfe, pandas-dev__pandas.95280573.func_pm_remove_assign__lbg8rvqt, pandas-dev__pandas.95280573.func_pm_remove_cond__jfye7a5m, pandas-dev__pandas.95280573.func_pm_remove_wrapper__qnvpskp4, paramiko__paramiko.23f92003.func_basic__l03s9o4u, pdfminer__pdfminer.six.1a8bd2f7.func_basic__c9uy8eph, pdfminer__pdfminer.six.1a8bd2f7.func_pm_remove_cond__uke8j24i, project-monai__monai.a09c1f08.pr_6662, pyasn1__pyasn1.0f07d724.func_basic__f0su3xd4, pyasn1__pyasn1.0f07d724.lm_rewrite__knsa989d, pydantic__pydantic.acb0f10f.combine_module__bc4i263m, pydantic__pydantic.acb0f10f.pr_6405, pydata__patsy.a5d16484.func_pm_ctrl_invert_if__une2tj06, pydicom__pydicom.7d361b3d.combine_file__z6q8lfst, pydicom__pydicom.7d361b3d.func_basic__crni4pcd, pydicom__pydicom.7d361b3d.lm_rewrite__5lcjzgj0, pygments__pygments.27649ebb.combine_file__xs063jk5, pygments__pygments.27649ebb.func_pm_class_rm_base__fyh7psx1, pygments__pygments.27649ebb.lm_rewrite__k8ap6agg, pylint-dev__astroid.b114f6b5.func_basic__8cdl1lj3, pylint-dev__astroid.b114f6b5.func_basic__v85bo3df, pylint-dev__astroid.b114f6b5.pr_2000, python-hyper__h11.bed0dd4a.func_basic__rullcy0k, python-openxml__python-docx.0cf6d71f.combine_file__alqpybf2, python-openxml__python-docx.0cf6d71f.func_basic__8a8ib80u, python-openxml__python-docx.0cf6d71f.func_basic__tvp7ihho, python-trio__trio.cfbbe2c1.combine_file__ims7s5py, python-trio__trio.cfbbe2c1.func_pm_ctrl_invert_if__jgab1l18, pyupio__safety.7654596b.func_pm_remove_assign__x549pctj, r1chardj0n3s__parse.30da9e4f.func_pm_remove_cond__k4df18dk, rubik__radon.54b88e58.func_basic__j3ky3sut, scanny__python-pptx.278b47b1.combine_module__pgpyms1p, scanny__python-pptx.278b47b1.func_basic__czmi0nii, scanny__python-pptx.278b47b1.func_basic__qaocuxju, scanny__python-pptx.278b47b1.func_pm_ctrl_shuffle__vba0ufyh, seperman__deepdiff.ed252022.combine_file__i0bmiysp, seperman__deepdiff.ed252022.func_pm_op_change_const__wmy6zc4f, seperman__deepdiff.ed252022.lm_rewrite__q9nvhqqv, sqlfluff__sqlfluff.50a1c4b6.combine_file__rx5uafgg, sqlfluff__sqlfluff.50a1c4b6.func_basic__ev9t5fab, sqlfluff__sqlfluff.50a1c4b6.func_pm_op_change__n4yed6x6, stanfordnlp__dspy.651a4c71.func_pm_ctrl_shuffle__4czprlhs, stanfordnlp__dspy.651a4c71.lm_rewrite__sq8htfc7, sunpy__sunpy.f8edfd5c.combine_module__qmglve7d, sunpy__sunpy.f8edfd5c.func_pm_remove_assign__9ihe6yto, suor__funcy.207a7810.func_basic__i18x9tdn, tkrajina__gpxpy.09fc46b3.func_basic__co94ybyl, tkrajina__gpxpy.09fc46b3.func_pm_remove_assign__rfjumbkf, tobymao__sqlglot.036601ba.func_pm_ctrl_shuffle__upfxvtsc, tobymao__sqlglot.036601ba.lm_rewrite__bz5prskr, tornadoweb__tornado.d5ac65c1.func_pm_remove_wrapper__5f0gecbm, tweepy__tweepy.91a41c6e.func_basic__41m363f2, weaveworks__grafanalib.5c3b17ed.func_pm_remove_loop__mk5qowxt
-- daytona warm: adrienverge__yamllint.8513d9b9.combine_file__26dq3p0r, agronholm__typeguard.b6a7e438.func_basic__x36wmlww, amueller__word_cloud.ec24191c.func_basic__b5q81acm, andialbrecht__sqlparse.e57923b3.lm_rewrite__v1mce7cy, benoitc__gunicorn.bacbf8aa.func_basic__460nzix1, bottlepy__bottle.a8dfef30.func_basic__a0p07t6t, cantools__cantools.0c6a7871.combine_file__2yrjny26, cantools__cantools.0c6a7871.func_basic__d9efqrpd, cantools__cantools.0c6a7871.func_pm_ctrl_invert_if__guvo4gx7, cknd__stackprinter.219fcc52.combine_file__gymp2mmm, conan-io__conan.86f29e13.combine_file__7tlw062n, conan-io__conan.86f29e13.pr_11412, conan-io__conan.86f29e13.pr_15965, dask__dask.5f61e423.combine_module__dkp16syb, davidhalter__parso.338a5760.func_basic__ru17a9em, dbader__schedule.82a43db1.lm_rewrite__rasm7146, encode__starlette.db5063c2.combine_file__hrjivx2s, encode__starlette.db5063c2.func_basic__vehyiaux, facebookresearch__fvcore.a491d5b9.lm_rewrite__yldgp998, facelessuser__soupsieve.a8080d97.func_basic__32q3kq07, gawel__pyquery.811cd048.func_basic__ze33rjgg, getmoto__moto.694ce1f4.pr_5370, getnikola__nikola.0f4c230e.func_pm_op_change__qsozv4it, graphql-python__graphene.82903263.func_basic__pb3kdg4w, gweis__isodate.17cb25eb.combine_file__52lz2sm6, instagram__monkeytype.70c3acf6.pr_17, iterative__dvc.1d6ea681.pr_8118, jd__tenacity.0d40e76f.combine_file__oicq97rw, jsvine__pdfplumber.02ff4313.func_pm_ctrl_invert_if__2uc4z08w, kayak__pypika.1c9646f0.func_basic__36ji4acq, knio__dominate.9082227e.combine_file__4oiguynb, lepture__mistune.bf54ef67.combine_file__92j5cljm, life4__textdistance.c3aca916.combine_file__q3rnjr33, lincolnloop__python-qrcode.456b01d4.func_basic__e3jyxm8o, mahmoud__glom.fb3c4e76.func_basic__adwelq9m, marshmallow-code__apispec.8b421526.combine_module__nei0tk81, marshmallow-code__marshmallow.9716fc62.func_basic__yuvfp4u4, marshmallow-code__webargs.dbde72fe.func_pm_ctrl_shuffle__awp0pgqm, mimino666__langdetect.a1598f1a.func_basic__9e17fhas, mozilla__bleach.73871d76.func_basic__sjpd1sls, msiemens__tinydb.10644a0e.func_basic__ovcdvpm7, oauthlib__oauthlib.1fd52536.func_basic__m3uxnqi6, pallets__click.fde47b4b.combine_file__0p8nh9y7, pallets__click.fde47b4b.func_basic__d37d317c, pallets__jinja.ada0a9a6.func_basic__lz1b7mnp, pallets__jinja.ada0a9a6.lm_rewrite__2njahj0g, pandas-dev__pandas.95280573.func_pm_class_rm_funcs__6vchaiys, pandas-dev__pandas.95280573.func_pm_ctrl_invert_if__iiokxmfe, pandas-dev__pandas.95280573.func_pm_remove_assign__lbg8rvqt, pandas-dev__pandas.95280573.func_pm_remove_cond__jfye7a5m, pandas-dev__pandas.95280573.func_pm_remove_wrapper__qnvpskp4, paramiko__paramiko.23f92003.func_basic__l03s9o4u, pdfminer__pdfminer.six.1a8bd2f7.func_basic__c9uy8eph, pdfminer__pdfminer.six.1a8bd2f7.func_pm_remove_cond__uke8j24i, project-monai__monai.a09c1f08.pr_6662, pyasn1__pyasn1.0f07d724.func_basic__f0su3xd4, pyasn1__pyasn1.0f07d724.lm_rewrite__knsa989d, pydantic__pydantic.acb0f10f.combine_module__bc4i263m, pydantic__pydantic.acb0f10f.pr_6405, pydata__patsy.a5d16484.func_pm_ctrl_invert_if__une2tj06, pydicom__pydicom.7d361b3d.combine_file__z6q8lfst, pydicom__pydicom.7d361b3d.func_basic__crni4pcd, pydicom__pydicom.7d361b3d.lm_rewrite__5lcjzgj0, pygments__pygments.27649ebb.combine_file__xs063jk5, pygments__pygments.27649ebb.func_pm_class_rm_base__fyh7psx1, pygments__pygments.27649ebb.lm_rewrite__k8ap6agg, pylint-dev__astroid.b114f6b5.func_basic__8cdl1lj3, pylint-dev__astroid.b114f6b5.func_basic__v85bo3df, pylint-dev__astroid.b114f6b5.pr_2000, python-hyper__h11.bed0dd4a.func_basic__rullcy0k, python-openxml__python-docx.0cf6d71f.combine_file__alqpybf2, python-openxml__python-docx.0cf6d71f.func_basic__8a8ib80u, python-openxml__python-docx.0cf6d71f.func_basic__tvp7ihho, python-trio__trio.cfbbe2c1.combine_file__ims7s5py, python-trio__trio.cfbbe2c1.func_pm_ctrl_invert_if__jgab1l18, pyupio__safety.7654596b.func_pm_remove_assign__x549pctj, r1chardj0n3s__parse.30da9e4f.func_pm_remove_cond__k4df18dk, rubik__radon.54b88e58.func_basic__j3ky3sut, scanny__python-pptx.278b47b1.combine_module__pgpyms1p, scanny__python-pptx.278b47b1.func_basic__czmi0nii, scanny__python-pptx.278b47b1.func_basic__qaocuxju, scanny__python-pptx.278b47b1.func_pm_ctrl_shuffle__vba0ufyh, seperman__deepdiff.ed252022.combine_file__i0bmiysp, seperman__deepdiff.ed252022.func_pm_op_change_const__wmy6zc4f, seperman__deepdiff.ed252022.lm_rewrite__q9nvhqqv, sqlfluff__sqlfluff.50a1c4b6.combine_file__rx5uafgg, sqlfluff__sqlfluff.50a1c4b6.func_basic__ev9t5fab, sqlfluff__sqlfluff.50a1c4b6.func_pm_op_change__n4yed6x6, stanfordnlp__dspy.651a4c71.func_pm_ctrl_shuffle__4czprlhs, stanfordnlp__dspy.651a4c71.lm_rewrite__sq8htfc7, sunpy__sunpy.f8edfd5c.combine_module__qmglve7d, sunpy__sunpy.f8edfd5c.func_pm_remove_assign__9ihe6yto, suor__funcy.207a7810.func_basic__i18x9tdn, tkrajina__gpxpy.09fc46b3.func_basic__co94ybyl, tkrajina__gpxpy.09fc46b3.func_pm_remove_assign__rfjumbkf, tobymao__sqlglot.036601ba.func_pm_ctrl_shuffle__upfxvtsc, tobymao__sqlglot.036601ba.lm_rewrite__bz5prskr, tornadoweb__tornado.d5ac65c1.func_pm_remove_wrapper__5f0gecbm, tweepy__tweepy.91a41c6e.func_basic__41m363f2, weaveworks__grafanalib.5c3b17ed.func_pm_remove_loop__mk5qowxt
-
-## Raw Artifacts
-
-- vercel cold: `results/ts-vercel-cold-solve-all-20260529.json`
-- vercel warm: `results/ts-vercel-warm-solve-all-20260529.json`
-- modal cold: `results/ts-modal-cold-solve-all-20260529.json`
-- modal warm: `results/ts-modal-warm-solve-all-20260529.json`
-- daytona cold: `results/ts-daytona-cold-solve-all-20260529.json`
-- daytona warm: `results/ts-daytona-warm-solve-all-20260529.json`
-
-## Notes
-
-- Per-task rows intentionally omit per-task price; provider cost is reported only at run level.
-- The matrix runner caps Modal and Daytona task concurrency by default to avoid known provider rate, CPU, and memory limits while still running all provider/mode runs concurrently.
-- For task-Docker datasets such as SWE-Smith, the matrix runner does not reuse generic Modal or Daytona warm artifacts because each task needs its own image.
-- Vercel cannot consume the per-task Docker image directly; SWE-Smith Vercel runs require an equivalent task-compatible runtime or snapshot.
-- Cost estimates are harness estimates based on configured provider rates and measured elapsed time; they do not include OpenRouter model spend.
-- Cold and warm runs are only directly comparable when they use the same task set, solver command, model, resource settings, and concurrency.
+The broader 20-task rollup is useful for coverage, but it mixes genuine solver/test failures with provider fidelity gaps. Use the cross-vendor subset as the main price/performance comparison.

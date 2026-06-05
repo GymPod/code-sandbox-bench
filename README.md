@@ -1,142 +1,89 @@
 # code-sandbox-bench
 
-Standalone benchmark harness for running TerminalBench and SWE-Smith smoke sets across coding sandbox providers.
+Benchmark harness for running code-repair tasks across sandbox providers.
 
-The repo contains both Python and Bun/TypeScript implementations so the runner can be chosen by ecosystem:
+The project currently compares Vercel, Modal, and Daytona on TerminalBench and SWE-Smith style tasks. It records sandbox lifecycle timings, solver/verifier status, output tails, and provider cost estimates so warm and cold runs can be compared with the same task set.
 
-- `py/`: Python runner with `local`, `vercel`, `modal`, and `daytona` provider adapters.
-- `ts/`: Bun/TypeScript runner with `local`, `vercel`, `modal`, and `daytona` provider adapters, plus the same dataset and output schema.
-- `data/`: bundled TerminalBench and SWE-Smith smoke parquet files plus JSONL mirrors for runtimes that do not need parquet parsing.
-- `reports/`: current PR report with measured Vercel results and normalized provider cost comparison.
+## Repository Layout
 
-## Dataset
+- `data/`: bundled TerminalBench and SWE-Smith smoke datasets in parquet and JSONL form.
+- `py/`: Python runner and provider adapters.
+- `ts/`: Bun/TypeScript runner, matrix runner, prewarm helper, and report generator.
+- `results/`: checked-in benchmark artifacts and investigation probes.
+- `reports/`: curated markdown analysis split into cross-vendor, per-task, and failure-mode views.
+- `scripts/`: dataset extraction and OpenRouter solver helpers.
 
-Included files:
+## Current Findings
 
-- `data/terminalbench_2026_03_05_smoke16.parquet`
-- `data/terminalbench_2026_03_05_smoke16.jsonl`
-- `data/swesmith_v4_smoke100.parquet`
-- `data/swesmith_v4_smoke100.jsonl`
+Start with [reports/terminalbench_provider_report.md](reports/terminalbench_provider_report.md).
 
-The JSONL mirror preserves `task_id`, `prompt`, `instruction`, and the `tar.gz+base64` task archive from the parquet row.
+The current apples-to-apples comparison focuses on the 13 tasks from the first 20 SWE-Smith smoke tasks that pass on all three providers in both warm and cold modes. On that subset, Daytona is fastest and lowest estimated provider cost, Modal is next, and Vercel is slowest for this SWE-Smith fallback-runtime workload.
 
-The SWE-Smith smoke set was extracted from `~/Downloads/swesmith-v4_train_2026_05_15.parquet` with:
+The broader 20-task rollup is still useful, but it mixes provider performance with Docker-image fidelity gaps and real task failures. Details are split across:
 
-```bash
-python scripts/extract_harbor_smoke.py --input ~/Downloads/swesmith-v4_train_2026_05_15.parquet --count 100 --strategy even --output-parquet data/swesmith_v4_smoke100.parquet --output-jsonl data/swesmith_v4_smoke100.jsonl
-```
+- [reports/cross-vendor-comparison.md](reports/cross-vendor-comparison.md)
+- [reports/per-task-comparison.md](reports/per-task-comparison.md)
+- [reports/failure-modes-tradeoffs.md](reports/failure-modes-tradeoffs.md)
 
-SWE-Smith rows include verifier scripts under `tests/test.sh`, solution artifacts under `solution/`, and `env_type=harbor_swesmith`. The TypeScript runner maps that env type to `/testbed` and the task Docker image declared by `environment/Dockerfile`; Modal and Daytona use that image as the task runtime, while Vercel needs an equivalent prebuilt runtime or snapshot.
+## Task Environment Mapping
+
+The runner normalizes task layout before solving:
+
+env type | workdir | provider runtime mapping
+--- | --- | ---
+`terminalbench` | `/workspace` | configured runtime.
+`harbor_swesmith` | `/testbed` | Modal and Daytona use the task Docker image or Dockerfile-derived setup; Vercel uses a fallback runtime plus repo-specific dependency repair.
+
+SWE-Smith rows include `tests/test.sh`, `solution/*`, and an `environment/Dockerfile` inside the task archive. Vercel cannot consume those per-task Docker images directly in this harness, so exact Docker-image fidelity may require a provider-specific snapshot/runtime.
 
 ## Quick Start
 
-Python:
+Install the TypeScript runner:
 
 ```bash
-cd py && uv venv && source .venv/bin/activate && uv pip install -e ".[providers]" && cp ../.env.example ../.env
+(cd ts && npm install)
 ```
+
+Run one local task:
 
 ```bash
-cd py && python -m code_sandbox_bench.bench --provider local --task-index 0 --output ../results/local-one.json
+(cd ts && bun run bench --provider local --task-index 0 --output ../results/ts-local-one.json)
 ```
 
-Bun/TypeScript:
+Run a small Vercel/Modal/Daytona matrix:
 
 ```bash
-cd ts && npm install && cp ../.env.example ../.env
+bun --env-file=.env ts/src/matrix.ts --providers all --modes cold,warm --task-index all --task-limit 20 --concurrency 2 --run-concurrency 6 --timeout-seconds 900 --solve-timeout-seconds 300 --solve-command-file scripts/openrouter_solver.sh --output results/solve-price-matrix-task20.json
 ```
+
+For solver-enabled remote runs, set provider credentials and OpenRouter variables in `.env`. Use `.env.example` as the template when present.
+
+## Result Schema
+
+Each run JSON records:
+
+- provider, mode, runtime, dataset, and task environment counts
+- pass count and estimated provider cost
+- per-task elapsed seconds and phase timings
+- verifier return code plus stdout/stderr tails
+- solver return code and output tails when a solver is enabled
+
+Matrix JSON files summarize a group of provider/mode run artifacts.
+
+## Reporting
+
+Curated reports live in `reports/`. To generate a fresh raw provider report from the newest matching artifacts:
 
 ```bash
-cd ts && bun run bench --provider local --task-index 0 --output ../results/ts-local-one.json
+cd ts
+bun run report --results-dir ../results --output ../reports/generated-provider-report.md
 ```
 
-## Solve Price Matrix
+The generated report is intentionally separate from the curated report files.
 
-The main comparison is solve-enabled cold vs warm provider cost on the 100-task SWE-Smith smoke set. The TypeScript runner defaults to `--concurrency 100`, and the matrix runner launches all provider/mode runs concurrently. Matrix runs apply provider-specific task concurrency caps by default for Modal and Daytona so the run does not immediately trip known sandbox creation rate, CPU, or memory limits; override them with `--modal-concurrency`, `--daytona-concurrency`, or `--vercel-concurrency` when the provider quota allows it.
+## Provider Notes
 
-Run the full Vercel, Modal, and Daytona cold/warm matrix:
-
-```bash
-SOLVER_MAX_STEPS=3 SOLVER_STEP_TIMEOUT_SECONDS=300 bun --env-file=.env ts/src/matrix.ts --providers all --modes cold,warm --concurrency 100 --run-concurrency 6 --output results/solve-price-matrix-$(date +%Y%m%d).json
-```
-
-For task-Docker datasets such as SWE-Smith, the matrix runner does not reuse generic Modal or Daytona warm artifacts because each task needs the Docker image declared by its own `environment/Dockerfile`. Vercel cannot consume those per-task Docker images directly, so SWE-Smith Vercel runs need an equivalent task-compatible runtime or snapshot.
-
-The matrix produces:
-
-- `results/ts-vercel-cold-solve-all-YYYYMMDD.json`
-- `results/ts-vercel-warm-solve-all-YYYYMMDD.json`
-- `results/ts-modal-cold-solve-all-YYYYMMDD.json`
-- `results/ts-modal-warm-solve-all-YYYYMMDD.json`
-- `results/ts-daytona-cold-solve-all-YYYYMMDD.json`
-- `results/ts-daytona-warm-solve-all-YYYYMMDD.json`
-
-Rebuild the solve-only price report from the newest available artifacts:
-
-```bash
-bun --env-file=.env ts/src/report.ts --results-dir results --output reports/terminalbench_provider_report.md
-```
-
-Run one solve-enabled provider/mode manually:
-
-```bash
-SOLVER_MAX_STEPS=3 SOLVER_STEP_TIMEOUT_SECONDS=300 bun --env-file=.env ts/src/bench.ts --provider modal --mode cold --task-index all --dataset data/swesmith_v4_smoke100.jsonl --runtime python:3.13 --timeout-seconds 180 --solve-timeout-seconds 900 --concurrency 100 --forward-env OPENROUTER_API_KEY,OPENROUTER_MODEL,SOLVER_MAX_STEPS,SOLVER_STEP_TIMEOUT_SECONDS --solve-command-file scripts/openrouter_solver.sh --output results/ts-modal-cold-solve-all.json
-```
-
-The bundled `scripts/openrouter_solver.sh` is a lightweight OpenRouter shell-agent loop. It reads the task file and workdir exported by the harness (`BENCH_TASK_FILE`, `BENCH_TASK_WORKDIR`), asks OpenRouter for a bash repair script, executes it, runs the verifier for feedback, and retries up to `SOLVER_MAX_STEPS` times. Set `OPENROUTER_MODEL` in `.env` to pin a model; otherwise OpenRouter uses the account default model.
-
-When `--solve-command` or `--solve-command-file` is set, the harness runs:
-
-1. Prepare task files in `/workspace`, tests in `/tests`, and solution artifacts in `/solution` when present.
-2. Write task instructions to `/workspace/TASK.md` and to the mapped task workdir when it differs.
-3. Run the solver command from the mapped task workdir.
-4. Run the verifier.
-
-Use `--forward-env NAME,OTHER_NAME` to copy selected local environment variables into the remote solver command. The harness does not record forwarded values in the result JSON.
-
-## Prewarm And Snapshot Runs
-
-Create reusable warm artifacts:
-
-```bash
-bun --env-file=.env ts/src/prewarm.ts --provider vercel --runtime python3.13 --profile terminalbench-smoke --output results/prewarm-vercel-terminalbench-20260528.json
-```
-
-```bash
-bun --env-file=.env ts/src/prewarm.ts --provider modal --runtime python:3.13 --profile terminalbench-smoke --output results/prewarm-modal-terminalbench-20260528.json
-```
-
-Run warm solve-enabled comparisons with OpenRouter manually:
-
-```bash
-SOLVER_MAX_STEPS=3 SOLVER_STEP_TIMEOUT_SECONDS=300 bun --env-file=.env ts/src/bench.ts --provider vercel --mode warm --task-index all --runtime python3.13 --timeout-seconds 180 --solve-timeout-seconds 900 --concurrency 16 --forward-env OPENROUTER_API_KEY,OPENROUTER_MODEL,SOLVER_MAX_STEPS,SOLVER_STEP_TIMEOUT_SECONDS --solve-command-file scripts/openrouter_solver.sh --vercel-snapshot-id "$VERCEL_SNAPSHOT_ID" --output results/ts-vercel-warm-solve-all.json
-```
-
-```bash
-SOLVER_MAX_STEPS=3 SOLVER_STEP_TIMEOUT_SECONDS=300 bun --env-file=.env ts/src/bench.ts --provider modal --mode warm --task-index all --runtime python:3.13 --timeout-seconds 180 --solve-timeout-seconds 900 --concurrency 16 --forward-env OPENROUTER_API_KEY,OPENROUTER_MODEL,SOLVER_MAX_STEPS,SOLVER_STEP_TIMEOUT_SECONDS --solve-command-file scripts/openrouter_solver.sh --modal-image-id "$MODAL_IMAGE_ID" --output results/ts-modal-warm-solve-all.json
-```
-
-```bash
-SOLVER_MAX_STEPS=3 SOLVER_STEP_TIMEOUT_SECONDS=300 bun --env-file=.env ts/src/bench.ts --provider daytona --mode warm --task-index all --runtime python:3.13 --timeout-seconds 180 --solve-timeout-seconds 900 --concurrency 16 --forward-env OPENROUTER_API_KEY,OPENROUTER_MODEL,SOLVER_MAX_STEPS,SOLVER_STEP_TIMEOUT_SECONDS --solve-command-file scripts/openrouter_solver.sh --prewarm-profile terminalbench-smoke --output results/ts-daytona-warm-solve-all.json
-```
-
-## What The Benchmark Does
-
-For each task, the harness:
-
-1. Starts a sandbox.
-2. Writes the bundled task archive into the sandbox.
-3. Extracts task files into `/workspace` and tests into `/tests`.
-4. Installs `pytest`.
-5. Optionally runs a solver/completion command in `/workspace`.
-6. Runs `bash /tests/test.sh` when present, otherwise `pytest /tests/test_outputs.py`.
-7. Records verifier exit code, elapsed time, output tails, and cost estimate.
-
-Use `--solve-command` or `--solve-command-file` for benchmark comparisons. Verifier-only runs are still supported for local smoke checks, but they are excluded from the provider price report because they do not represent an actual task-solving workload.
-
-## Notes
-
-- Vercel uses `@vercel/sandbox`. For local access-token auth, set `VERCEL_API_KEY`, `VERCEL_ACCESS_TOKEN`, or `VERCEL_TOKEN`, plus `VERCEL_TEAM_ID` and `VERCEL_PROJECT_ID`. The SDK can also use Vercel OIDC credentials when available.
-- Modal requires the Modal SDK credentials supported by `modal`.
-- Daytona requires `DAYTONA_API_KEY` and, when not using SDK defaults, `DAYTONA_API_URL` and `DAYTONA_TARGET`. The current Daytona API key did not have permission for named snapshot creation, so the warm Daytona runs use a cached image definition via `--prewarm-profile terminalbench-smoke`.
-- Cost estimates are upper bounds based on wall-clock duration. See `reports/terminalbench_provider_report.md` for the current cold/warm solve price comparison.
+- Vercel uses `@vercel/sandbox`. Configure `VERCEL_API_KEY`, `VERCEL_ACCESS_TOKEN`, or `VERCEL_TOKEN`, plus `VERCEL_TEAM_ID` and `VERCEL_PROJECT_ID` unless OIDC credentials are available.
+- Modal uses the Modal SDK credentials supported by `modal`.
+- Daytona uses `DAYTONA_API_KEY` and, when needed, `DAYTONA_API_URL` and `DAYTONA_TARGET`.
+- Cost estimates are harness estimates from measured wall-clock time and configured provider rates. They exclude OpenRouter model spend.

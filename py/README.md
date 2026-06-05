@@ -1,18 +1,24 @@
 # Python Runner
 
-Install:
+Python implementation of the benchmark runner and provider adapters.
+
+The TypeScript runner is the current primary path for matrix runs and report generation, but the Python runner remains useful for local smoke checks and provider-adapter experiments.
+
+## Install
 
 ```bash
-uv venv && source .venv/bin/activate && uv pip install -e ".[providers]"
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[providers]"
 ```
 
-Run one local verifier:
+## Run One Local Task
 
 ```bash
 python -m code_sandbox_bench.bench --provider local --task-index 0 --output ../results/local-one.json
 ```
 
-Run all tasks on a provider:
+## Run A Provider
 
 ```bash
 python -m code_sandbox_bench.bench --provider vercel --task-index all --output ../results/vercel-all.json
@@ -20,3 +26,8 @@ python -m code_sandbox_bench.bench --provider modal --task-index all --output ..
 python -m code_sandbox_bench.bench --provider daytona --task-index all --output ../results/daytona-all.json
 ```
 
+## Notes
+
+- The Python runner supports `local`, `vercel`, `modal`, and `daytona`.
+- Provider credentials are read from the environment.
+- New cross-provider analysis should generally use the TypeScript matrix runner so output shape matches the current reports.
