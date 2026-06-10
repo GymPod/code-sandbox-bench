@@ -35,7 +35,7 @@ See `../reports/terminalbench_provider_report.md` for the report index.
 ## Artifact Types
 
 - `prewarm-*`: warm artifact creation or inspection output.
-- `*-verifier-*`: verifier-only checks.
+- `*-verifier-*`: verifier-only checks. Daytona verifier artifacts live under `verifier/`.
 - `*-solve-*`: solver-enabled runs.
 - `*-env-*`, `*-probe*`, `*-trace*`: provider or task-environment investigations.
 

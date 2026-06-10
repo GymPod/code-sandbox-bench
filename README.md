@@ -83,9 +83,33 @@ bun run report --results-dir ../results --output ../reports/generated-provider-r
 
 The generated report is intentionally separate from the curated report files.
 
+### How The Reports Were Generated
+
+The curated reports in `reports/` were produced in three steps:
+
+1. **Solve-enabled matrix runs.** `ts/src/matrix.ts` ran cold and warm solve runs for Vercel, Modal, and Daytona over the first 20 tasks of `data/swesmith_v4_smoke100.jsonl`, using `scripts/openrouter_solver.sh` as the solver. Each provider/mode run wrote one result JSON to `results/`; the exact input files behind the current reports are listed in [results/README.md](results/README.md) under "Current Report Inputs".
+2. **Raw report generation.** `ts/src/report.ts` (`bun run report`) discovers the newest `ts-<provider>-<mode>-solve-all*.json` per provider/mode in `--results-dir` and computes the rollup, phase, and per-task tables. No numbers in the generated report are hand-written.
+3. **Curated analysis.** The cross-vendor, per-task, and failure-mode documents were written from the raw report plus the per-task output tails in the result JSONs, restricting the headline comparison to the 13 tasks that pass on all three providers in both cold and warm modes.
+
+The `Updated:` date in each curated report reflects when the analysis was last revised, not when the benchmark runs executed.
+
 ## Provider Notes
 
 - Vercel uses `@vercel/sandbox`. Configure `VERCEL_API_KEY`, `VERCEL_ACCESS_TOKEN`, or `VERCEL_TOKEN`, plus `VERCEL_TEAM_ID` and `VERCEL_PROJECT_ID` unless OIDC credentials are available.
 - Modal uses the Modal SDK credentials supported by `modal`.
 - Daytona uses `DAYTONA_API_KEY` and, when needed, `DAYTONA_API_URL` and `DAYTONA_TARGET`.
 - Cost estimates are harness estimates from measured wall-clock time and configured provider rates. They exclude OpenRouter model spend.
+
+### Warm Artifacts And Saved State
+
+Auth credentials live in `.env` (see `.env.example`). Warm-run state — the snapshot/image identifiers reused to skip cold setup — is **not** stored in `.env`. Instead, `ts/src/prewarm.ts` creates the artifact and emits its identifier as an `env` field in the prewarm result JSON under `results/`:
+
+provider | identifier | emitted to | reused via
+--- | --- | --- | ---
+Vercel | `VERCEL_SNAPSHOT_ID` | `results/prewarm-vercel-*.json` | `--vercel-snapshot-id` or the `VERCEL_SNAPSHOT_ID` env var
+Modal | `MODAL_IMAGE_ID` | `results/prewarm-modal-*.json` | `--modal-image-id` or the `MODAL_IMAGE_ID` env var
+Daytona | `DAYTONA_SNAPSHOT` | `results/prewarm-daytona-*.json` | `--daytona-snapshot` or the `DAYTONA_SNAPSHOT` env var
+
+To run warm, copy the identifier from the prewarm result JSON into the corresponding flag or env var on the next `bench.ts`/`matrix.ts` run. For TerminalBench (non-Docker) tasks, Daytona instead uses a cached profile via `--prewarm-profile` (default `terminalbench-smoke`) rather than a named snapshot.
+
+Note: the Vercel fallback's repo-specific dependency repair for SWE-Smith tasks is **not** configured through environment variables — it is in-code setup in `ts/src/bench.ts`. See [reports/failure-modes-tradeoffs.md](reports/failure-modes-tradeoffs.md) for the rationale.
