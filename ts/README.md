@@ -43,6 +43,12 @@ bun run report --results-dir ../results --output ../reports/generated-provider-r
 
 Generated reports are raw summaries. Curated analysis lives in `../reports/`.
 
+How it works:
+
+- `src/report.ts` scans `--results-dir` for the newest `ts-<provider>-<mode>-solve-all*.json` file for each provider (vercel, modal, daytona) and mode (cold, warm), preferring date-suffixed files. Missing provider/mode combinations are noted rather than failing the run.
+- For each discovered run it computes pass counts, total/mean/median/p95 elapsed seconds, harness cost estimates, mean per-phase timings (`start`, `upload`, `prepare`, `instruction write`, `solve`, `verify`, `stop`), and per-task tables.
+- The input JSONs come from `src/bench.ts` (single provider/mode runs) or `src/matrix.ts` (concurrent matrices). Warm runs depend on artifacts created by `src/prewarm.ts` (Vercel snapshot, Modal image, or Daytona prewarm profile).
+
 ## Task Runtime Mapping
 
 - `terminalbench` tasks run from `/workspace` on the configured runtime.

@@ -31,3 +31,7 @@ python -m code_sandbox_bench.bench --provider daytona --task-index all --output 
 - The Python runner supports `local`, `vercel`, `modal`, and `daytona`.
 - Provider credentials are read from the environment.
 - New cross-provider analysis should generally use the TypeScript matrix runner so output shape matches the current reports.
+
+## Reports
+
+The Python runner writes the same result JSON shape as the TypeScript runner, so its outputs can feed the shared report generator — but the generator's discovery logic only picks up files named `ts-<provider>-<mode>-solve-all*.json`, so Python outputs must follow that naming to be included. The current reports were generated from TypeScript matrix runs; see the Reporting section of the root README for the full pipeline.

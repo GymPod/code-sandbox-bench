@@ -83,6 +83,16 @@ bun run report --results-dir ../results --output ../reports/generated-provider-r
 
 The generated report is intentionally separate from the curated report files.
 
+### How The Reports Were Generated
+
+The curated reports in `reports/` were produced in three steps:
+
+1. **Solve-enabled matrix runs.** `ts/src/matrix.ts` ran cold and warm solve runs for Vercel, Modal, and Daytona over the first 20 tasks of `data/swesmith_v4_smoke100.jsonl`, using `scripts/openrouter_solver.sh` as the solver. Each provider/mode run wrote one result JSON to `results/`; the exact input files behind the current reports are listed in [results/README.md](results/README.md) under "Current Report Inputs".
+2. **Raw report generation.** `ts/src/report.ts` (`bun run report`) discovers the newest `ts-<provider>-<mode>-solve-all*.json` per provider/mode in `--results-dir` and computes the rollup, phase, and per-task tables. No numbers in the generated report are hand-written.
+3. **Curated analysis.** The cross-vendor, per-task, and failure-mode documents were written from the raw report plus the per-task output tails in the result JSONs, restricting the headline comparison to the 13 tasks that pass on all three providers in both cold and warm modes.
+
+The `Updated:` date in each curated report reflects when the analysis was last revised, not when the benchmark runs executed.
+
 ## Provider Notes
 
 - Vercel uses `@vercel/sandbox`. Configure `VERCEL_API_KEY`, `VERCEL_ACCESS_TOKEN`, or `VERCEL_TOKEN`, plus `VERCEL_TEAM_ID` and `VERCEL_PROJECT_ID` unless OIDC credentials are available.
