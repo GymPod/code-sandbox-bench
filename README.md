@@ -99,3 +99,17 @@ The `Updated:` date in each curated report reflects when the analysis was last r
 - Modal uses the Modal SDK credentials supported by `modal`.
 - Daytona uses `DAYTONA_API_KEY` and, when needed, `DAYTONA_API_URL` and `DAYTONA_TARGET`.
 - Cost estimates are harness estimates from measured wall-clock time and configured provider rates. They exclude OpenRouter model spend.
+
+### Warm Artifacts And Saved State
+
+Auth credentials live in `.env` (see `.env.example`). Warm-run state — the snapshot/image identifiers reused to skip cold setup — is **not** stored in `.env`. Instead, `ts/src/prewarm.ts` creates the artifact and emits its identifier as an `env` field in the prewarm result JSON under `results/`:
+
+provider | identifier | emitted to | reused via
+--- | --- | --- | ---
+Vercel | `VERCEL_SNAPSHOT_ID` | `results/prewarm-vercel-*.json` | `--vercel-snapshot-id` or the `VERCEL_SNAPSHOT_ID` env var
+Modal | `MODAL_IMAGE_ID` | `results/prewarm-modal-*.json` | `--modal-image-id` or the `MODAL_IMAGE_ID` env var
+Daytona | `DAYTONA_SNAPSHOT` | `results/prewarm-daytona-*.json` | `--daytona-snapshot` or the `DAYTONA_SNAPSHOT` env var
+
+To run warm, copy the identifier from the prewarm result JSON into the corresponding flag or env var on the next `bench.ts`/`matrix.ts` run. For TerminalBench (non-Docker) tasks, Daytona instead uses a cached profile via `--prewarm-profile` (default `terminalbench-smoke`) rather than a named snapshot.
+
+Note: the Vercel fallback's repo-specific dependency repair for SWE-Smith tasks is **not** configured through environment variables — it is in-code setup in `ts/src/bench.ts`. See [reports/failure-modes-tradeoffs.md](reports/failure-modes-tradeoffs.md) for the rationale.
