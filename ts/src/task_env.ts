@@ -1,4 +1,5 @@
 import { gunzipSync } from "node:zlib";
+import { loadEnvManifests } from "./env_manifest";
 import type { BenchTask, ProviderName, TaskEnv } from "./types";
 
 export function resolveTaskEnv(task: BenchTask, defaultRuntime: string, provider: ProviderName): TaskEnv {
@@ -6,6 +7,10 @@ export function resolveTaskEnv(task: BenchTask, defaultRuntime: string, provider
     const dockerfile = readArchiveText(task, "environment/Dockerfile");
     const dockerImage = dockerfile ? parseDockerfileFrom(dockerfile) : undefined;
     const dockerfileCommands = dockerfile ? providerDockerfileCommands(task, dockerfile, provider) : undefined;
+    const taskToml = readArchiveText(task, "task.toml");
+    const repoKey = taskToml ? parseTomlValue(taskToml, "repository")?.split("/", 2)[1] : undefined;
+    const sourceId = taskToml ? parseTomlValue(taskToml, "source_id") : undefined;
+    const manifest = repoKey ? loadEnvManifests()[repoKey] : undefined;
     return {
       envType: task.env_type,
       dataSource: task.data_source,
@@ -14,7 +19,11 @@ export function resolveTaskEnv(task: BenchTask, defaultRuntime: string, provider
       runtime: providerSupportsDockerRuntime(provider) ? dockerImage : defaultRuntime,
       dockerImage,
       dockerfileCommands,
-      dockerfilePath: dockerfile ? "environment/Dockerfile" : undefined
+      dockerfilePath: dockerfile ? "environment/Dockerfile" : undefined,
+      repoKey,
+      sourceId,
+      manifest,
+      resources: manifest?.resources
     };
   }
   return {
@@ -28,6 +37,10 @@ export function resolveTaskEnv(task: BenchTask, defaultRuntime: string, provider
 
 export function providerSupportsDockerRuntime(provider: ProviderName): boolean {
   return provider === "modal" || provider === "daytona";
+}
+
+function parseTomlValue(toml: string, key: string): string | undefined {
+  return toml.match(new RegExp(`^${key} = "([^"]+)"`, "m"))?.[1];
 }
 
 function parseDockerfileFrom(dockerfile: string): string | undefined {

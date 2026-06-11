@@ -1,0 +1,184 @@
+{
+  "facebookresearch__fvcore.a491d5b9": {
+    "install_cmds": [
+      "pip install --index-url https://download.pytorch.org/whl/cpu torch || pip install torch",
+      "pip install shapely",
+      "rm -f tests/test_focal_loss.py",
+      "pip install -e ."
+    ],
+    "extra_pip": [
+      "yacs",
+      "termcolor",
+      "iopath",
+      "tabulate==0.8.10",
+      "tqdm"
+    ],
+    "resources": {
+      "memoryGb": 8,
+      "diskGb": 20
+    },
+    "notes": "CPU torch wheel index keeps fallback runtimes within disk/time budgets (PyPI CUDA torch as fallback); tabulate is pinned because 0.10 changes _model_stats_table indentation."
+  },
+  "Project-MONAI__MONAI.a09c1f08": {
+    "pre_install_pip": [
+      "--index-url https://download.pytorch.org/whl/cpu torch"
+    ],
+    "resources": {
+      "memoryGb": 8,
+      "diskGb": 20
+    },
+    "notes": "requirements-dev.txt pulls torch; preinstall the CPU wheel so pip resolution does not download CUDA builds."
+  },
+  "pandas-dev__pandas.95280573": {
+    "pre_install_pip": [
+      "meson-python>=0.13.1 meson>=1.2.1 ninja cython>=3.0 numpy versioneer[toml] python-dateutil pytz hypothesis pytest-xdist"
+    ],
+    "resources": {
+      "cpu": 4,
+      "memoryGb": 8,
+      "diskGb": 20
+    },
+    "notes": "Profile builds pandas from source with --no-build-isolation; build requirements normally come from the conda env yml."
+  },
+  "dask__dask.5f61e423": {
+    "extra_pip": [
+      "pandas",
+      "pyarrow",
+      "numpy",
+      "lz4",
+      "toolz",
+      "cloudpickle",
+      "fsspec",
+      "partd",
+      "importlib_metadata",
+      "xarray"
+    ],
+    "resources": {
+      "memoryGb": 8
+    },
+    "notes": "Test suite exercises dataframe/array paths whose deps come from the conda env yml, not setup.py."
+  },
+  "encode__starlette.db5063c2": {
+    "extra_pip": [
+      "httpx",
+      "trio",
+      "python-multipart",
+      "jinja2",
+      "itsdangerous",
+      "anyio",
+      "pyyaml"
+    ],
+    "notes": "Test deps come from requirements.txt in the image build env."
+  },
+  "facelessuser__soupsieve.a8080d97": {
+    "extra_pip": [
+      "beautifulsoup4",
+      "lxml",
+      "html5lib"
+    ]
+  },
+  "pydantic__pydantic.acb0f10f": {
+    "install_cmds": [
+      "pip install -e .[email,timezone]"
+    ],
+    "extra_pip": [
+      "dirty-equals",
+      "pytest-mock",
+      "pytest-examples",
+      "cloudpickle",
+      "rich",
+      "eval-type-backport",
+      "faker",
+      "pytest-benchmark",
+      "email-validator",
+      "jsonschema",
+      "pytz"
+    ],
+    "notes": "Profile uses make install (uv sync into its own venv); fallback installs the package plus the test dependency group directly."
+  },
+  "jsvine__pdfplumber.02ff4313": {
+    "install_cmds": [
+      "pip install -e .",
+      "pip install -r requirements-dev.txt"
+    ],
+    "system_packages": [
+      "ghostscript"
+    ],
+    "notes": "Profile installs ghostscript via apt-get; fallback runtimes may use dnf, so it is declared as a system package instead."
+  },
+  "getmoto__moto.694ce1f4": {
+    "install_cmds": [
+      "pip install -e .[all,server]",
+      "pip install -r requirements-dev.txt"
+    ],
+    "resources": {
+      "memoryGb": 8
+    },
+    "notes": "Profile runs make init, which wraps these pip installs; calling pip directly avoids requiring make on the fallback runtime."
+  },
+  "iterative__dvc.1d6ea681": {
+    "extra_pip": [
+      "pathspec==0.10.3"
+    ],
+    "resources": {
+      "memoryGb": 8
+    },
+    "notes": "dvc/ignore.py imports the private pathspec _DIR_MARK symbol, which moved after 0.10.x."
+  },
+  "sunpy__sunpy.f8edfd5c": {
+    "resources": {
+      "memoryGb": 8
+    },
+    "notes": "Compiles C extensions and loads large test fixtures."
+  },
+  "conan-io__conan.86f29e13": {
+    "extra_pip": [
+      "bottle",
+      "pluginbase",
+      "PyJWT",
+      "webtest",
+      "mock",
+      "parameterized"
+    ],
+    "system_packages": [
+      "cmake",
+      "make",
+      "gcc",
+      "gcc-c++",
+      "autoconf",
+      "automake",
+      "libtool",
+      "pkgconf-pkg-config"
+    ],
+    "notes": "Conan integration tests shell out to autotools/cmake toolchains; sqlite3 support comes from the uv-managed interpreter."
+  },
+  "cantools__cantools.0c6a7871": {
+    "extra_pip": [
+      "parameterized"
+    ],
+    "notes": "sqlite3 support comes from the uv-managed interpreter; [dev,plot] extras cover the remaining deps."
+  },
+  "python-trio__trio.cfbbe2c1": {
+    "extra_pip": [
+      "trustme",
+      "astor",
+      "isort",
+      "black",
+      "ruff",
+      "pylint",
+      "jedi",
+      "pyOpenSSL==25.0.0",
+      "cryptography<45"
+    ],
+    "notes": "Test-only deps from trio's test-requirements; pyOpenSSL/cryptography era-pinned because newer majors break the DTLS test context."
+  },
+  "stanfordnlp__dspy.651a4c71": {
+    "extra_pip": [
+      "pillow",
+      "mcp",
+      "datamodel-code-generator",
+      "litellm[proxy]==1.72.4"
+    ],
+    "notes": "Test-only deps from the conda env yml; litellm era-pinned (with proxy extras for the mock LLM server fixture) because newer versions change ModelResponse mocking behavior. The image-handling F2P tests fetch URLs, so they need outbound HTTP."
+  }
+}

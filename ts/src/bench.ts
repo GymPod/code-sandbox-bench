@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { loadTasks } from "./dataset";
 import { makeProvider, writeText } from "./providers";
 import { resolveTaskEnv } from "./task_env";
-import type { BenchArgs, BenchTask, CommandResult, RunKind, RunMode, TaskEnv } from "./types";
+import type { BenchArgs, BenchTask, CommandResult, ProviderName, RunKind, RunMode, TaskEnv } from "./types";
 
 const basePrepareCommand = `
 set -eu
@@ -102,127 +102,191 @@ function estimateCost(provider: string, seconds: number, cpu: number, memoryGb: 
   return 0;
 }
 
-function prepareCommandFor(taskEnv: TaskEnv): string {
+const APT_PACKAGE_NAMES: Record<string, string> = {
+  "gcc-c++": "g++",
+  "pkgconf-pkg-config": "pkg-config"
+};
+
+// Pinned to the era the SWE-Smith task images were built (mid-2025), since
+// newer pytest/pytest-cov majors break conftest hooks in several repos.
+const FALLBACK_VERIFIER_PIP_DEPS = ["pytest==8.4.1", "pytest-cov==6.1.1", "pytest-xdist", "pytest-timeout", "pytest-mock", "pytest-asyncio", "hypothesis", "mock"];
+
+// Deterministic gold solution: restore test files first, then reverse-apply
+// the bug-introducing patch only while it is still present, so reruns (e.g.
+// solver retries) cannot leave rejects or half-reversed state behind.
+const deterministicSolveScript = `#!/bin/bash
+set -uo pipefail
+cd /testbed
+sol_dir=$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)
+patch -p1 --forward --reject-file=/dev/null < "$sol_dir/restore-tests.patch" || true
+if patch -R -p1 --dry-run --force < "$sol_dir/gold.patch" >/dev/null 2>&1; then
+  patch -R -p1 --force < "$sol_dir/gold.patch" || exit 1
+fi
+patch -p1 --dry-run --force < "$sol_dir/gold.patch" >/dev/null 2>&1 || exit 1
+exit 0`;
+
+const deterministicSolveRewrite = `
+for bench_sol_dir in /solution /workspace/solution; do
+  if [ -f "$bench_sol_dir/gold.patch" ] && [ -f "$bench_sol_dir/restore-tests.patch" ]; then
+    cat > "$bench_sol_dir/solve.sh" <<'BENCH_EOF_SOLVE'
+${deterministicSolveScript}
+BENCH_EOF_SOLVE
+    chmod +x "$bench_sol_dir/solve.sh"
+  fi
+done
+`;
+
+function systemPackageInstall(dnfPackages: string[]): string {
+  const aptPackages = dnfPackages.map((name) => APT_PACKAGE_NAMES[name] ?? name);
+  return `if command -v dnf >/dev/null 2>&1; then
+    dnf install -y ${dnfPackages.join(" ")} >>/tmp/bench-system-deps.log 2>&1 || true
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y ${dnfPackages.join(" ")} >>/tmp/bench-system-deps.log 2>&1 || true
+  elif command -v apt-get >/dev/null 2>&1; then
+    apt-get update >>/tmp/bench-system-deps.log 2>&1 || true
+    apt-get install -y --no-install-recommends ${aptPackages.join(" ")} >>/tmp/bench-system-deps.log 2>&1 || true
+  fi`;
+}
+
+// Fallback environment setup for providers that cannot run the task Docker
+// image (Vercel, local). The recipe comes from the per-repo manifest in
+// data/swesmith_env_manifests.json, which mirrors the SWE-Smith profile the
+// task image was built from: exact Python version via uv, mirror clone of the
+// bug branch, then the profile's install commands inside a dedicated venv.
+// The verifier venv matches the task image's (pytest/swebench/swesmith), so
+// grading uses the task's real FAIL_TO_PASS/PASS_TO_PASS lists.
+function fallbackEnvSetup(taskEnv: TaskEnv, provider: ProviderName): string {
+  const manifest = taskEnv.manifest;
+  const pythonVersion = manifest?.python_version ?? "3.10";
+  const mirror = manifest?.mirror ?? (taskEnv.repoKey ? `swesmith/${taskEnv.repoKey}` : "");
+  const sourceId = taskEnv.sourceId ?? "";
+  const baseSystemPackages = ["git", "patch", "tar", "gzip", "gcc", "gcc-c++", "make"];
+  const systemPackages = [...new Set([...baseSystemPackages, ...(manifest?.system_packages ?? [])])];
+  // Each pip spec is shell-quoted: version constraints like "foo<2" or
+  // "bar>=1.2" would otherwise be parsed as shell redirections.
+  const quoteSpecs = (specs: string[]): string =>
+    specs.flatMap((spec) => spec.split(/\s+/)).map((token) => `'${token}'`).join(" ");
+  const pipInstallLines = [
+    ...(manifest?.pre_install_pip ?? []).map(
+      (spec) => `python -m pip install ${quoteSpecs([spec])} || echo "bench-install-cmd-failed: pip install ${spec}"`
+    ),
+    ...(manifest?.extra_pip?.length
+      ? [`python -m pip install ${quoteSpecs(manifest.extra_pip)} || echo "bench-install-cmd-failed: extra pip deps"`]
+      : []),
+    `python -m pip install ${quoteSpecs(FALLBACK_VERIFIER_PIP_DEPS)} || true`
+  ];
+  const installCmdLines = (manifest?.install_cmds ?? ["python -m pip install -e ."]).map((command) => {
+    const guarded = command.startsWith("apt-get")
+      ? `if command -v apt-get >/dev/null 2>&1; then ${command}; fi`
+      : command;
+    return `{ ${guarded} ; } || echo "bench-install-cmd-failed: ${command.replaceAll('"', '\\"')}"`;
+  });
+  const createAgentUser =
+    provider === "local"
+      ? ""
+      : `
+  if ! id agent >/dev/null 2>&1; then
+    useradd -m -u 1001 agent 2>/dev/null || useradd -m agent || true
+  fi`;
+  return `
+BENCH_REPO='${taskEnv.repoKey ?? ""}'
+if [ -f /opt/bench-fallback-repo ] && [ "$(cat /opt/bench-fallback-repo)" != "$BENCH_REPO" ]; then
+  rm -rf /opt/testbed-venv /testbed /opt/bench-fallback-repo
+  rm -f /opt/verifier-venv/bin/pytest
+fi
+if [ ! -x /opt/verifier-venv/bin/pytest ]; then
+  ${systemPackageInstall(systemPackages)}
+  python3 -m ensurepip --user >/tmp/bench-ensurepip.log 2>&1 || true
+  PIP_INDEX_URL=https://pypi.org/simple python3 -m pip install --user --upgrade pip uv >/tmp/bench-pip-uv.log 2>&1 || true
+  BENCH_UV=$(command -v uv || printf '%s' "$HOME/.local/bin/uv")
+  export UV_PYTHON_INSTALL_DIR=/opt/uv-python
+  "$BENCH_UV" python install ${pythonVersion}
+  "$BENCH_UV" venv --python ${pythonVersion} --seed /opt/testbed-venv
+  chmod -R a+rX /opt/uv-python /opt/testbed-venv
+  export PIP_INDEX_URL=https://pypi.org/simple
+  if [ ! -e /testbed/pyproject.toml ] && [ ! -e /testbed/setup.py ] && [ ! -e /testbed/setup.cfg ]; then
+    rm -rf /testbed
+    git clone --depth 1 --branch '${sourceId}' 'https://github.com/${mirror}.git' /testbed || {
+      git clone 'https://github.com/${mirror}.git' /testbed
+      git -C /testbed checkout '${sourceId}'
+    }
+  fi
+  cat > /tmp/bench-testbed-install.sh <<'BENCH_EOF_INSTALL'
+set -x
+cd /testbed
+${pipInstallLines.join("\n")}
+${installCmdLines.join("\n")}
+python -m pip install pytest pytest-cov || true
+BENCH_EOF_INSTALL
+  PATH=/opt/testbed-venv/bin:$PATH bash /tmp/bench-testbed-install.sh >/tmp/bench-testbed-install.log 2>&1 || true
+  grep -E 'bench-install-cmd-failed' /tmp/bench-testbed-install.log || true
+  tail -30 /tmp/bench-testbed-install.log
+  rm -rf /opt/verifier-venv
+  "$BENCH_UV" venv --python 3.11 --seed /opt/verifier-venv
+  /opt/verifier-venv/bin/python -m pip install pytest==8.4.1 swebench==4.0.3 datasets==2.16.1 swesmith==0.0.6 >/tmp/bench-pip-verifier.log 2>&1 || tail -5 /tmp/bench-pip-verifier.log
+  chmod -R a+rX /opt/verifier-venv
+  mkdir -p /usr/local/bin
+  ln -sf /opt/testbed-venv/bin/pytest /usr/local/bin/pytest
+  printf '%s' "$BENCH_REPO" > /opt/bench-fallback-repo
+  if [ ! -e /opt/miniconda3/bin/conda ]; then
+    mkdir -p /opt/miniconda3/bin
+    cat > /opt/miniconda3/bin/activate <<'BENCH_EOF_ACTIVATE'
+export PATH=/opt/testbed-venv/bin:/opt/miniconda3/bin:/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
+return 0
+BENCH_EOF_ACTIVATE
+    printf '#!/bin/sh\\nexit 0\\n' > /opt/miniconda3/bin/conda
+    chmod +x /opt/miniconda3/bin/conda
+  fi${createAgentUser}
+fi
+if [ -f /opt/bench-fallback-repo ]; then
+  sed -i 's#/root/.local/bin/uv run ##g' /tests/test.sh 2>/dev/null || true
+fi
+if ! command -v patch >/dev/null 2>&1; then
+  ${systemPackageInstall(["patch"])}
+fi`;
+}
+
+export function prepareCommandFor(taskEnv: TaskEnv, provider: ProviderName): string {
   if (taskEnv.envType !== "harbor_swesmith") {
     return basePrepareCommand;
   }
   return `${basePrepareCommand}
-if [ ! -x /opt/verifier-venv/bin/pytest ]; then
-  repo_name=$(python3 - <<'PY'
-from pathlib import Path
-import re
-text = Path("/workspace/task.toml").read_text()
-match = re.search(r'^repository = "([^"]+)"', text, re.M)
-print(match.group(1).split("/", 1)[-1] if match else "")
-PY
-)
-  bench_python=$(command -v python3 || printf python3)
-  case "$repo_name" in
-    cantools__*)
-      if /usr/bin/python3 - <<'PY' >/dev/null 2>&1
-import sqlite3
-PY
-      then
-        bench_python=/usr/bin/python3
-      fi
-      ;;
-  esac
-  if [ "$bench_python" = "/usr/bin/python3" ]; then
-    if command -v dnf >/dev/null 2>&1; then
-      dnf install -y python3-pip python3-devel gcc gcc-c++ make freetype-devel libpng-devel
-    elif command -v yum >/dev/null 2>&1; then
-      yum install -y python3-pip python3-devel gcc gcc-c++ make freetype-devel libpng-devel
-    elif command -v apt-get >/dev/null 2>&1; then
-      apt-get update && apt-get install -y --no-install-recommends python3-pip python3-dev gcc g++ make libfreetype6-dev libpng-dev
-    fi
-  fi
-  "$bench_python" -m ensurepip --user >/tmp/ensurepip-fallback.log 2>&1 || true
-  PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user --upgrade pip >/tmp/pip-upgrade-fallback.log 2>&1 || true
-  verifier_compat_deps="pytest==8.3.4 pytest-xdist pytest-timeout pytest-mock pytest-asyncio==0.21.2 hypothesis mypy==1.2.0 numpy pillow matplotlib gevent eventlet PyYAML httpx toolz importlib_metadata cloudpickle fsspec partd"
-  PIP_INDEX_URL=https://pypi.org/simple "$bench_python" -m pip install --user $verifier_compat_deps
-  mkdir -p /opt/verifier-venv/bin
-  mkdir -p /usr/local/bin
-  cat > /opt/verifier-venv/bin/pytest <<SH
-#!/bin/sh
-PATH="/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH" exec "$bench_python" -m pytest -o addopts='' "\\$@"
-SH
-  chmod +x /opt/verifier-venv/bin/pytest
-  ln -sf /opt/verifier-venv/bin/pytest /usr/local/bin/pytest
-  cat > /tests/test_state.py <<'PY'
-from pathlib import Path
-import re
+${fallbackEnvSetup(taskEnv, provider)}
+${deterministicSolveRewrite}
+`;
+}
 
-
-def test_patch_resolved() -> None:
-    text = Path("/logs/test_output.log").read_text(encoding="utf-8", errors="replace")
-    lowered = text.lower()
-    summary = lowered[-4000:]
-    assert not re.search(r"=+ .*\\b(failed|error|errors)\\b.* =+", summary), text[-4000:]
-    assert re.search(r"=+ .*\\b\\d+ passed\\b.* =+", summary), text[-4000:]
-PY
+// SWE-Smith task images run the agent and verifier as the unprivileged
+// ``agent`` user; some test suites (e.g. starlette staticfiles) depend on
+// permission semantics that do not hold for root. Run the verifier as
+// ``agent`` whenever that user exists and we are root.
+export function verifyCommandFor(taskEnv: TaskEnv): string {
+  if (taskEnv.envType !== "harbor_swesmith") {
+    return verifyCommand;
+  }
+  return `
+set +e
+cat > /tmp/bench-verify.sh <<'BENCH_EOF_VERIFY'
+if [ -x /tests/test.sh ] || [ -f /tests/test.sh ]; then
+  bash /tests/test.sh
+else
+  PATH="$HOME/.local/bin:$PATH" pytest /tests/test_outputs.py -rA
 fi
-if [ ! -e /opt/miniconda3/bin/activate ]; then
-  mkdir -p /opt/miniconda3/bin
-  printf 'export PATH=/opt/miniconda3/bin:/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH\\nreturn 0\\n' > /opt/miniconda3/bin/activate
-  printf '#!/bin/sh\\nexit 0\\n' > /opt/miniconda3/bin/conda
-  chmod +x /opt/miniconda3/bin/conda
-fi
-if ! command -v patch >/dev/null 2>&1; then
-  if command -v dnf >/dev/null 2>&1; then
-    dnf install -y patch
-  elif command -v yum >/dev/null 2>&1; then
-    yum install -y patch
-  elif command -v apt-get >/dev/null 2>&1; then
-    apt-get update && apt-get install -y --no-install-recommends patch
+BENCH_EOF_VERIFY
+chmod 755 /tmp/bench-verify.sh
+if [ "$(id -u)" -eq 0 ] && id agent >/dev/null 2>&1; then
+  chown -R agent /testbed /tests /solution /logs 2>/dev/null || true
+  if command -v runuser >/dev/null 2>&1; then
+    cd /testbed && runuser -u agent -- bash /tmp/bench-verify.sh
+  else
+    cd /testbed && su -s /bin/bash agent -c 'bash /tmp/bench-verify.sh'
   fi
+else
+  bash /tmp/bench-verify.sh
 fi
-if [ ! -e /testbed/pyproject.toml ] && [ ! -e /testbed/setup.py ]; then
-  repo=$(python3 - <<'PY'
-from pathlib import Path
-import re
-text = Path("/workspace/task.toml").read_text()
-match = re.search(r'^repository = "([^"]+)"', text, re.M)
-print(match.group(1) if match else "")
-PY
-)
-  source_id=$(python3 - <<'PY'
-from pathlib import Path
-import re
-text = Path("/workspace/task.toml").read_text()
-match = re.search(r'^source_id = "([^"]+)"', text, re.M)
-print(match.group(1) if match else "")
-PY
-)
-  if [ -n "$repo" ]; then
-    rm -rf /testbed
-    git clone --depth 1 --branch "$source_id" "https://github.com/$repo.git" /testbed || {
-      git clone "https://github.com/$repo.git" /testbed
-      git -C /testbed checkout "$source_id"
-    }
-  fi
-fi
-if [ -e /testbed/pyproject.toml ] || [ -e /testbed/setup.py ]; then
-  "\${bench_python:-python3}" -m ensurepip --user >/tmp/ensurepip-testbed.log 2>&1 || true
-  PIP_INDEX_URL=https://pypi.org/simple "\${bench_python:-python3}" -m pip install --user -e /testbed >/tmp/pip-testbed.log 2>&1 || true
-  PIP_INDEX_URL=https://pypi.org/simple "\${bench_python:-python3}" -m pip install --user -e '/testbed[test,tests,dev]' >/tmp/pip-testbed-extras.log 2>&1 || true
-  repo_extra_deps=""
-  repo_torch_deps=""
-  case "$repo_name" in
-    cantools__*) repo_extra_deps="bitstruct textparser diskcache python-can crccheck argparse_addons parameterized" ;;
-    dask__*) repo_extra_deps="pandas pyarrow lz4 toolz importlib_metadata cloudpickle fsspec partd" ;;
-    encode__starlette*) repo_extra_deps="httpx trio python-multipart jinja2 itsdangerous" ;;
-    facebookresearch__fvcore*)
-      repo_extra_deps="yacs termcolor iopath tabulate tqdm"
-      repo_torch_deps="torch"
-      ;;
-    facelessuser__soupsieve*) repo_extra_deps="beautifulsoup4 lxml html5lib" ;;
-  esac
-  PIP_INDEX_URL=https://pypi.org/simple "\${bench_python:-python3}" -m pip install --user $verifier_compat_deps $repo_extra_deps >/tmp/pip-verifier-compat.log 2>&1 || true
-  if [ -n "$repo_torch_deps" ]; then
-    "\${bench_python:-python3}" -m pip install --user --index-url https://download.pytorch.org/whl/cpu $repo_torch_deps >/tmp/pip-verifier-torch.log 2>&1 || true
-  fi
-  "\${bench_python:-python3}" -m pip uninstall -y pytest-cov coverage >/tmp/pip-verifier-no-coverage.log 2>&1 || true
-fi
+code=$?
+if [ "$code" -eq 0 ]; then echo 1 > /logs/verifier/reward.txt; else echo 0 > /logs/verifier/reward.txt; fi
+exit "$code"
 `;
 }
 
@@ -299,13 +363,16 @@ async function runTaskAttempt(args: BenchArgs, task: BenchTask): Promise<Record<
       phases[`${name}_seconds`] = (performance.now() - phaseStarted) / 1000;
     }
   }
+  const cpu = Math.max(args.cpu, taskEnv.resources?.cpu ?? 0);
+  const memoryGb = Math.max(args.memoryGb, taskEnv.resources?.memoryGb ?? 0);
+  const diskGb = Math.max(args.diskGb, taskEnv.resources?.diskGb ?? 0);
   try {
     const activeProvider = makeProvider(args.provider, {
       runtime: taskEnv.runtime ?? args.runtime,
       timeoutSeconds: args.timeoutSeconds,
-      cpu: args.cpu,
-      memoryGb: args.memoryGb,
-      diskGb: args.diskGb,
+      cpu,
+      memoryGb,
+      diskGb,
       dockerfileCommands: taskEnv.dockerfileCommands,
       prewarmProfile: args.prewarmProfile,
       vercelSnapshotId: args.vercelSnapshotId,
@@ -315,7 +382,9 @@ async function runTaskAttempt(args: BenchArgs, task: BenchTask): Promise<Record<
     provider = activeProvider;
     await timed("start", () => activeProvider.start());
     await timed("upload", () => writeText(activeProvider, "/tmp/task.tar.gz.b64", task.task_files.content, args.timeoutSeconds));
-    const prepare = await timed("prepare", () => activeProvider.run(prepareCommandFor(taskEnv), undefined, args.timeoutSeconds));
+    const prepare = await timed("prepare", () =>
+      activeProvider.run(prepareCommandFor(taskEnv, args.provider), undefined, args.timeoutSeconds)
+    );
     if (prepare.returnCode === 0) {
       await timed("instruction_write", () => writeTaskInstructions(activeProvider, task, taskEnv, args.timeoutSeconds));
       if (solveCommand) {
@@ -329,7 +398,7 @@ async function runTaskAttempt(args: BenchArgs, task: BenchTask): Promise<Record<
         );
         solveElapsedSeconds = (performance.now() - solveStarted) / 1000;
       }
-      result = await timed("verify", () => activeProvider.run(verifyCommand, taskEnv.verifierCwd, args.timeoutSeconds));
+      result = await timed("verify", () => activeProvider.run(verifyCommandFor(taskEnv), taskEnv.verifierCwd, args.timeoutSeconds));
     } else {
       result = prepare;
     }
@@ -352,6 +421,10 @@ async function runTaskAttempt(args: BenchArgs, task: BenchTask): Promise<Record<
   const elapsedSeconds = (performance.now() - started) / 1000;
   const item: Record<string, unknown> = {
     task_id: task.task_id,
+    task_repo: taskEnv.repoKey,
+    task_cpu: cpu,
+    task_memory_gb: memoryGb,
+    task_disk_gb: diskGb,
     env_type: taskEnv.envType,
     data_source: taskEnv.dataSource,
     task_workdir: taskEnv.workdir,
@@ -436,7 +509,16 @@ function taskEnvCounts(tasks: BenchTask[]): Record<string, number> {
 
 function estimateRunCost(args: BenchArgs, results: Record<string, unknown>[]): number {
   return results.reduce((sum, item) => {
-    return sum + estimateCost(args.provider, Number(item.elapsed_seconds ?? 0), args.cpu, args.memoryGb, args.diskGb);
+    return (
+      sum +
+      estimateCost(
+        args.provider,
+        Number(item.elapsed_seconds ?? 0),
+        Number(item.task_cpu ?? args.cpu),
+        Number(item.task_memory_gb ?? args.memoryGb),
+        Number(item.task_disk_gb ?? args.diskGb)
+      )
+    );
   }, 0);
 }
 
@@ -493,4 +575,6 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\"'\"'")}'`;
 }
 
-await main();
+if (import.meta.main) {
+  await main();
+}

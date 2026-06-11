@@ -20,7 +20,20 @@ SWE-Smith task archives include:
 - `environment/Dockerfile`: task runtime definition.
 - `environment/hackblock/*`: helper files used by task Docker setup.
 
-The runner maps SWE-Smith tasks to `/testbed`. Modal and Daytona can use the task Docker image or Dockerfile setup. Vercel uses a fallback runtime and repo-specific dependency repair.
+The runner maps SWE-Smith tasks to `/testbed`. Modal and Daytona can use the task Docker image or Dockerfile setup. Vercel and local reconstruct the environment from the per-repo manifests described below.
+
+## Environment Manifests
+
+- `swesmith_env_manifests.json`: generated, one entry per repo in the SWE-Smith dataset. Each entry records the mirror repo, the exact Python version, the install commands from the SWE-Smith profile the task Docker image was built from, plus any extra pip/system deps and resource overrides. The TypeScript runner uses this to reconstruct task environments on providers that cannot run the task Docker image.
+- `swesmith_env_overrides.json`: hand-maintained, narrow per-repo overrides merged into the generated manifest (e.g. CPU torch wheel index for fvcore/MONAI, pandas source-build requirements, higher memory/disk for heavy repos).
+
+Regenerate after dataset or override changes:
+
+```bash
+python3 scripts/build_env_manifests.py
+```
+
+The script downloads the pinned `swesmith` package from PyPI and parses its per-repo profiles, so the manifest always reflects the same recipes the task images were built from. It fails if any dataset repo has no profile.
 
 ## Regeneration
 

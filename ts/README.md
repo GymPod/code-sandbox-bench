@@ -14,6 +14,7 @@ npm install
 - `bun run matrix`: run several provider/mode combinations concurrently.
 - `bun run prewarm`: create or test warm artifacts where supported.
 - `bun run report`: generate a raw markdown report from result JSON files.
+- `bun run triage`: classify failed tasks from result JSON files into provider-transport, environment-fidelity, patch-application, timeout, and real-test-failure buckets.
 
 ## Local Smoke
 
@@ -54,7 +55,23 @@ How it works:
 - `terminalbench` tasks run from `/workspace` on the configured runtime.
 - `harbor_swesmith` tasks run from `/testbed`.
 - Modal and Daytona can use task Docker images or Dockerfile-derived setup.
-- Vercel uses the configured runtime plus fallback setup and repo-specific dependency repair for SWE-Smith tasks.
+- Vercel (and local) reconstruct the task environment from the per-repo manifest in `../data/swesmith_env_manifests.json`: the exact Python version is provisioned with uv into `/opt/testbed-venv`, the SWE-Smith mirror repo is cloned at the task branch, and the profile's install commands run inside the venv. The verifier venv matches the task image's (pytest/swebench/swesmith), so grading uses the task's real FAIL_TO_PASS/PASS_TO_PASS lists. Per-repo overrides live in `../data/swesmith_env_overrides.json`; regenerate the manifest with `python3 ../scripts/build_env_manifests.py`.
+
+For SWE-Smith tasks the prepare step also rewrites `/solution/solve.sh` into a deterministic, idempotent form (reverse-applies the gold patch only while it is still present), and the verifier runs as the unprivileged `agent` user when possible so permission-sensitive test suites behave like they do in the task Docker image. Per-repo resource overrides (`resources` in the manifest) raise cpu/memory/disk for heavy repos such as pandas and MONAI.
+
+## Gold Runnability Check
+
+To verify that every task environment can apply the reference solution and pass its verifier on a provider (no LLM involved):
+
+```bash
+bun --env-file=../.env src/bench.ts --provider vercel --mode cold --task-index all --task-limit 100 --timeout-seconds 900 --solve-timeout-seconds 300 --solve-command-file ../scripts/gold_solver.sh --output ../results/ts-vercel-cold-gold-all.json
+```
+
+## Failure Triage
+
+```bash
+bun run triage ../results/ts-vercel-cold-solve-all-*.json --output ../reports/generated-triage.md
+```
 
 ## Validation
 

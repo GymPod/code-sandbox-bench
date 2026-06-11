@@ -29,6 +29,10 @@ export type TaskEnv = {
   dockerImage?: string;
   dockerfileCommands?: string[];
   dockerfilePath?: string;
+  repoKey?: string;
+  sourceId?: string;
+  manifest?: import("./env_manifest").EnvManifestEntry;
+  resources?: import("./env_manifest").RepoResources;
 };
 
 export type BenchArgs = {

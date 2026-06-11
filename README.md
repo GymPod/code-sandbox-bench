@@ -34,9 +34,9 @@ The runner normalizes task layout before solving:
 env type | workdir | provider runtime mapping
 --- | --- | ---
 `terminalbench` | `/workspace` | configured runtime.
-`harbor_swesmith` | `/testbed` | Modal and Daytona use the task Docker image or Dockerfile-derived setup; Vercel uses a fallback runtime plus repo-specific dependency repair.
+`harbor_swesmith` | `/testbed` | Modal and Daytona use the task Docker image or Dockerfile-derived setup; Vercel and local reconstruct the environment from per-repo manifests in `data/swesmith_env_manifests.json` (exact Python via uv, mirror clone, SWE-Smith profile install commands).
 
-SWE-Smith rows include `tests/test.sh`, `solution/*`, and an `environment/Dockerfile` inside the task archive. Vercel cannot consume those per-task Docker images directly in this harness, so exact Docker-image fidelity may require a provider-specific snapshot/runtime.
+SWE-Smith rows include `tests/test.sh`, `solution/*`, and an `environment/Dockerfile` inside the task archive. Vercel cannot consume those per-task Docker images directly in this harness, so the runner rebuilds each environment from the same SWE-Smith profile recipe the image was built from (see `data/README.md`). The prepare step also rewrites `solution/solve.sh` into a deterministic idempotent form, and the verifier runs as a non-root `agent` user to match task-image semantics.
 
 ## Quick Start
 

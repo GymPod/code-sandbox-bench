@@ -1,0 +1,1133 @@
+{
+  "generated_at": "2026-06-11T20:56:18Z",
+  "swesmith_version": "0.0.6",
+  "datasets": [
+    "/home/user/code-sandbox-bench/data/swesmith_v4_smoke100.jsonl"
+  ],
+  "repo_count": 66,
+  "repos": {
+    "Instagram__MonkeyType.70c3acf6": {
+      "owner": "Instagram",
+      "repo": "MonkeyType",
+      "commit": "70c3acf62950be5dfb28743c7a719bfdecebcd84",
+      "mirror": "swesmith/Instagram__MonkeyType.70c3acf6",
+      "docker_image": "jyangballin/swesmith.x86_64.instagram_1776_monkeytype.70c3acf6",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "Knio__dominate.9082227e": {
+      "owner": "Knio",
+      "repo": "dominate",
+      "commit": "9082227e93f5a370012bb934286caf7385d3e7ac",
+      "mirror": "swesmith/Knio__dominate.9082227e",
+      "docker_image": "jyangballin/swesmith.x86_64.knio_1776_dominate.9082227e",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "Mimino666__langdetect.a1598f1a": {
+      "owner": "Mimino666",
+      "repo": "langdetect",
+      "commit": "a1598f1afcbfe9a758cfd06bd688fbc5780177b2",
+      "mirror": "swesmith/Mimino666__langdetect.a1598f1a",
+      "docker_image": "jyangballin/swesmith.x86_64.mimino666_1776_langdetect.a1598f1a",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "Project-MONAI__MONAI.a09c1f08": {
+      "owner": "Project-MONAI",
+      "repo": "MONAI",
+      "commit": "a09c1f08461cec3d2131fde3939ef38c3c4ad5fc",
+      "mirror": "swesmith/Project-MONAI__MONAI.a09c1f08",
+      "docker_image": "jyangballin/swesmith.x86_64.project-monai_1776_monai.a09c1f08",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "sed -i '/^git+https:\\/\\/github.com\\/Project-MONAI\\//d' requirements-dev.txt",
+        "python -m pip install -U -r requirements-dev.txt",
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [
+        "--index-url https://download.pytorch.org/whl/cpu torch"
+      ],
+      "extra_pip": [],
+      "system_packages": [],
+      "resources": {
+        "memoryGb": 8,
+        "diskGb": 20
+      },
+      "notes": "requirements-dev.txt pulls torch; preinstall the CPU wheel so pip resolution does not download CUDA builds."
+    },
+    "Suor__funcy.207a7810": {
+      "owner": "Suor",
+      "repo": "funcy",
+      "commit": "207a7810c216c7408596d463d3f429686e83b871",
+      "mirror": "swesmith/Suor__funcy.207a7810",
+      "docker_image": "jyangballin/swesmith.x86_64.suor_1776_funcy.207a7810",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "adrienverge__yamllint.8513d9b9": {
+      "owner": "adrienverge",
+      "repo": "yamllint",
+      "commit": "8513d9b97da3b32453b3fccb221f4ab134a028d7",
+      "mirror": "swesmith/adrienverge__yamllint.8513d9b9",
+      "docker_image": "jyangballin/swesmith.x86_64.adrienverge_1776_yamllint.8513d9b9",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "agronholm__typeguard.b6a7e438": {
+      "owner": "agronholm",
+      "repo": "typeguard",
+      "commit": "b6a7e4387c30a9f7d635712157c889eb073c1ea3",
+      "mirror": "swesmith/agronholm__typeguard.b6a7e438",
+      "docker_image": "jyangballin/swesmith.x86_64.agronholm_1776_typeguard.b6a7e438",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e .[test,doc]"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "amueller__word_cloud.ec24191c": {
+      "owner": "amueller",
+      "repo": "word_cloud",
+      "commit": "ec24191c64570d287032c5a4179c38237cd94043",
+      "mirror": "swesmith/amueller__word_cloud.ec24191c",
+      "docker_image": "jyangballin/swesmith.x86_64.amueller_1776_word_cloud.ec24191c",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "andialbrecht__sqlparse.e57923b3": {
+      "owner": "andialbrecht",
+      "repo": "sqlparse",
+      "commit": "e57923b3aa823c524c807953cecc48cf6eec2cb2",
+      "mirror": "swesmith/andialbrecht__sqlparse.e57923b3",
+      "docker_image": "jyangballin/swesmith.x86_64.andialbrecht_1776_sqlparse.e57923b3",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "benoitc__gunicorn.bacbf8aa": {
+      "owner": "benoitc",
+      "repo": "gunicorn",
+      "commit": "bacbf8aa5152b94e44aa5d2a94aeaf0318a85248",
+      "mirror": "swesmith/benoitc__gunicorn.bacbf8aa",
+      "docker_image": "jyangballin/swesmith.x86_64.benoitc_1776_gunicorn.bacbf8aa",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "bottlepy__bottle.a8dfef30": {
+      "owner": "bottlepy",
+      "repo": "bottle",
+      "commit": "a8dfef301dec35f13e7578306002c40796651629",
+      "mirror": "swesmith/bottlepy__bottle.a8dfef30",
+      "docker_image": "jyangballin/swesmith.x86_64.bottlepy_1776_bottle.a8dfef30",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "cantools__cantools.0c6a7871": {
+      "owner": "cantools",
+      "repo": "cantools",
+      "commit": "0c6a78711409e4307de34582f795ddb426d58dd8",
+      "mirror": "swesmith/cantools__cantools.0c6a7871",
+      "docker_image": "jyangballin/swesmith.x86_64.cantools_1776_cantools.0c6a7871",
+      "task_count": 3,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e .[dev,plot]"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "parameterized"
+      ],
+      "system_packages": [],
+      "notes": "sqlite3 support comes from the uv-managed interpreter; [dev,plot] extras cover the remaining deps."
+    },
+    "cknd__stackprinter.219fcc52": {
+      "owner": "cknd",
+      "repo": "stackprinter",
+      "commit": "219fcc522fa5fd6e440703358f6eb408f3ffc007",
+      "mirror": "swesmith/cknd__stackprinter.219fcc52",
+      "docker_image": "jyangballin/swesmith.x86_64.cknd_1776_stackprinter.219fcc52",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "conan-io__conan.86f29e13": {
+      "owner": "conan-io",
+      "repo": "conan",
+      "commit": "86f29e137a10bb6ed140c1a8c05c3099987b13c5",
+      "mirror": "swesmith/conan-io__conan.86f29e13",
+      "docker_image": "jyangballin/swesmith.x86_64.conan-io_1776_conan.86f29e13",
+      "task_count": 3,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "bottle",
+        "pluginbase",
+        "PyJWT",
+        "webtest",
+        "mock",
+        "parameterized"
+      ],
+      "system_packages": [
+        "cmake",
+        "make",
+        "gcc",
+        "gcc-c++",
+        "autoconf",
+        "automake",
+        "libtool",
+        "pkgconf-pkg-config"
+      ],
+      "notes": "Conan integration tests shell out to autotools/cmake toolchains; sqlite3 support comes from the uv-managed interpreter."
+    },
+    "dask__dask.5f61e423": {
+      "owner": "dask",
+      "repo": "dask",
+      "commit": "5f61e42324c3a6cd4da17b5d5ebe4663aa4b8783",
+      "mirror": "swesmith/dask__dask.5f61e423",
+      "docker_image": "jyangballin/swesmith.x86_64.dask_1776_dask.5f61e423",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install graphviz",
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "pandas",
+        "pyarrow",
+        "numpy",
+        "lz4",
+        "toolz",
+        "cloudpickle",
+        "fsspec",
+        "partd",
+        "importlib_metadata",
+        "xarray"
+      ],
+      "system_packages": [],
+      "resources": {
+        "memoryGb": 8
+      },
+      "notes": "Test suite exercises dataframe/array paths whose deps come from the conda env yml, not setup.py."
+    },
+    "davidhalter__parso.338a5760": {
+      "owner": "davidhalter",
+      "repo": "parso",
+      "commit": "338a57602740ad0645b2881e8c105ffdc959e90d",
+      "mirror": "swesmith/davidhalter__parso.338a5760",
+      "docker_image": "jyangballin/swesmith.x86_64.davidhalter_1776_parso.338a5760",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python setup.py install"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "dbader__schedule.82a43db1": {
+      "owner": "dbader",
+      "repo": "schedule",
+      "commit": "82a43db1b938d8fdf60103bd41f329e06c8d3651",
+      "mirror": "swesmith/dbader__schedule.82a43db1",
+      "docker_image": "jyangballin/swesmith.x86_64.dbader_1776_schedule.82a43db1",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "encode__starlette.db5063c2": {
+      "owner": "encode",
+      "repo": "starlette",
+      "commit": "db5063c26030e019f7ee62aef9a1b564eca9f1d6",
+      "mirror": "swesmith/encode__starlette.db5063c2",
+      "docker_image": "jyangballin/swesmith.x86_64.encode_1776_starlette.db5063c2",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "httpx",
+        "trio",
+        "python-multipart",
+        "jinja2",
+        "itsdangerous",
+        "anyio",
+        "pyyaml"
+      ],
+      "system_packages": [],
+      "notes": "Test deps come from requirements.txt in the image build env."
+    },
+    "facebookresearch__fvcore.a491d5b9": {
+      "owner": "facebookresearch",
+      "repo": "fvcore",
+      "commit": "a491d5b9a06746f387aca2f1f9c7c7f28e20bef9",
+      "mirror": "swesmith/facebookresearch__fvcore.a491d5b9",
+      "docker_image": "jyangballin/swesmith.x86_64.facebookresearch_1776_fvcore.a491d5b9",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install --index-url https://download.pytorch.org/whl/cpu torch || pip install torch",
+        "pip install shapely",
+        "rm -f tests/test_focal_loss.py",
+        "pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "yacs",
+        "termcolor",
+        "iopath",
+        "tabulate==0.8.10",
+        "tqdm"
+      ],
+      "system_packages": [],
+      "resources": {
+        "memoryGb": 8,
+        "diskGb": 20
+      },
+      "notes": "CPU torch wheel index keeps fallback runtimes within disk/time budgets (PyPI CUDA torch as fallback); tabulate is pinned because 0.10 changes _model_stats_table indentation."
+    },
+    "facelessuser__soupsieve.a8080d97": {
+      "owner": "facelessuser",
+      "repo": "soupsieve",
+      "commit": "a8080d97a0355e316981cb0c5c887a861c4244e3",
+      "mirror": "swesmith/facelessuser__soupsieve.a8080d97",
+      "docker_image": "jyangballin/swesmith.x86_64.facelessuser_1776_soupsieve.a8080d97",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "beautifulsoup4",
+        "lxml",
+        "html5lib"
+      ],
+      "system_packages": []
+    },
+    "gawel__pyquery.811cd048": {
+      "owner": "gawel",
+      "repo": "pyquery",
+      "commit": "811cd048ffbe4e69fdc512863671131f98d691fb",
+      "mirror": "swesmith/gawel__pyquery.811cd048",
+      "docker_image": "jyangballin/swesmith.x86_64.gawel_1776_pyquery.811cd048",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "getmoto__moto.694ce1f4": {
+      "owner": "getmoto",
+      "repo": "moto",
+      "commit": "694ce1f4880c784fed0553bc19b2ace6691bc109",
+      "mirror": "swesmith/getmoto__moto.694ce1f4",
+      "docker_image": "jyangballin/swesmith.x86_64.getmoto_1776_moto.694ce1f4",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e .[all,server]",
+        "pip install -r requirements-dev.txt"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": [],
+      "resources": {
+        "memoryGb": 8
+      },
+      "notes": "Profile runs make init, which wraps these pip installs; calling pip directly avoids requiring make on the fallback runtime."
+    },
+    "getnikola__nikola.0f4c230e": {
+      "owner": "getnikola",
+      "repo": "nikola",
+      "commit": "0f4c230e5159e4e937463eb8d6d2ddfcbb09def2",
+      "mirror": "swesmith/getnikola__nikola.0f4c230e",
+      "docker_image": "jyangballin/swesmith.x86_64.getnikola_1776_nikola.0f4c230e",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e '.[extras,tests]'"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "graphql-python__graphene.82903263": {
+      "owner": "graphql-python",
+      "repo": "graphene",
+      "commit": "82903263080b3b7f22c2ad84319584d7a3b1a1f6",
+      "mirror": "swesmith/graphql-python__graphene.82903263",
+      "docker_image": "jyangballin/swesmith.x86_64.graphql-python_1776_graphene.82903263",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "gweis__isodate.17cb25eb": {
+      "owner": "gweis",
+      "repo": "isodate",
+      "commit": "17cb25eb7bc3556a68f3f7b241313e9bb8b23760",
+      "mirror": "swesmith/gweis__isodate.17cb25eb",
+      "docker_image": "jyangballin/swesmith.x86_64.gweis_1776_isodate.17cb25eb",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "iterative__dvc.1d6ea681": {
+      "owner": "iterative",
+      "repo": "dvc",
+      "commit": "1d6ea68133289ceab2637ce7095772678af792c6",
+      "mirror": "swesmith/iterative__dvc.1d6ea681",
+      "docker_image": "jyangballin/swesmith.x86_64.iterative_1776_dvc.1d6ea681",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e \".[dev]\""
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "pathspec==0.10.3"
+      ],
+      "system_packages": [],
+      "resources": {
+        "memoryGb": 8
+      },
+      "notes": "dvc/ignore.py imports the private pathspec _DIR_MARK symbol, which moved after 0.10.x."
+    },
+    "jd__tenacity.0d40e76f": {
+      "owner": "jd",
+      "repo": "tenacity",
+      "commit": "0d40e76f7d06d631fb127e1ec58c8bd776e70d49",
+      "mirror": "swesmith/jd__tenacity.0d40e76f",
+      "docker_image": "jyangballin/swesmith.x86_64.jd_1776_tenacity.0d40e76f",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "jsvine__pdfplumber.02ff4313": {
+      "owner": "jsvine",
+      "repo": "pdfplumber",
+      "commit": "02ff4313f846380fefccec9c73fb4c8d8a80d0ee",
+      "mirror": "swesmith/jsvine__pdfplumber.02ff4313",
+      "docker_image": "jyangballin/swesmith.x86_64.jsvine_1776_pdfplumber.02ff4313",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e .",
+        "pip install -r requirements-dev.txt"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": [
+        "ghostscript"
+      ],
+      "notes": "Profile installs ghostscript via apt-get; fallback runtimes may use dnf, so it is declared as a system package instead."
+    },
+    "kayak__pypika.1c9646f0": {
+      "owner": "kayak",
+      "repo": "pypika",
+      "commit": "1c9646f0a019a167c32b649b6f5e6423c5ba2c9b",
+      "mirror": "swesmith/kayak__pypika.1c9646f0",
+      "docker_image": "jyangballin/swesmith.x86_64.kayak_1776_pypika.1c9646f0",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "lepture__mistune.bf54ef67": {
+      "owner": "lepture",
+      "repo": "mistune",
+      "commit": "bf54ef67390e02a5cdee7495d4386d7770c1902b",
+      "mirror": "swesmith/lepture__mistune.bf54ef67",
+      "docker_image": "jyangballin/swesmith.x86_64.lepture_1776_mistune.bf54ef67",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "life4__textdistance.c3aca916": {
+      "owner": "life4",
+      "repo": "textdistance",
+      "commit": "c3aca916bd756a8cb71114688b469ec90ef5b232",
+      "mirror": "swesmith/life4__textdistance.c3aca916",
+      "docker_image": "jyangballin/swesmith.x86_64.life4_1776_textdistance.c3aca916",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e \".[benchmark,test]\""
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "lincolnloop__python-qrcode.456b01d4": {
+      "owner": "lincolnloop",
+      "repo": "python-qrcode",
+      "commit": "456b01d41f16e0cfb0f70c687848e276b78c3e8a",
+      "mirror": "swesmith/lincolnloop__python-qrcode.456b01d4",
+      "docker_image": "jyangballin/swesmith.x86_64.lincolnloop_1776_python-qrcode.456b01d4",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "mahmoud__glom.fb3c4e76": {
+      "owner": "mahmoud",
+      "repo": "glom",
+      "commit": "fb3c4e76f28816aebfd2538980e617742e98a7c2",
+      "mirror": "swesmith/mahmoud__glom.fb3c4e76",
+      "docker_image": "jyangballin/swesmith.x86_64.mahmoud_1776_glom.fb3c4e76",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "marshmallow-code__apispec.8b421526": {
+      "owner": "marshmallow-code",
+      "repo": "apispec",
+      "commit": "8b421526ea1015046de42599dd93da6a3473fe44",
+      "mirror": "swesmith/marshmallow-code__apispec.8b421526",
+      "docker_image": "jyangballin/swesmith.x86_64.marshmallow-code_1776_apispec.8b421526",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e .[dev]"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "marshmallow-code__marshmallow.9716fc62": {
+      "owner": "marshmallow-code",
+      "repo": "marshmallow",
+      "commit": "9716fc629976c9d3ce30cd15d270d9ac235eb725",
+      "mirror": "swesmith/marshmallow-code__marshmallow.9716fc62",
+      "docker_image": "jyangballin/swesmith.x86_64.marshmallow-code_1776_marshmallow.9716fc62",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "marshmallow-code__webargs.dbde72fe": {
+      "owner": "marshmallow-code",
+      "repo": "webargs",
+      "commit": "dbde72fe5db8a999acd1716d5ef855ab7cc1a274",
+      "mirror": "swesmith/marshmallow-code__webargs.dbde72fe",
+      "docker_image": "jyangballin/swesmith.x86_64.marshmallow-code_1776_webargs.dbde72fe",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "mozilla__bleach.73871d76": {
+      "owner": "mozilla",
+      "repo": "bleach",
+      "commit": "73871d766de1e33a296eeb4f9faf2451f28bee39",
+      "mirror": "swesmith/mozilla__bleach.73871d76",
+      "docker_image": "jyangballin/swesmith.x86_64.mozilla_1776_bleach.73871d76",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "msiemens__tinydb.10644a0e": {
+      "owner": "msiemens",
+      "repo": "tinydb",
+      "commit": "10644a0e07ad180c5b756aba272ee6b0dbd12df8",
+      "mirror": "swesmith/msiemens__tinydb.10644a0e",
+      "docker_image": "jyangballin/swesmith.x86_64.msiemens_1776_tinydb.10644a0e",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "oauthlib__oauthlib.1fd52536": {
+      "owner": "oauthlib",
+      "repo": "oauthlib",
+      "commit": "1fd5253630c03e3f12719dd8c13d43111f66a8d2",
+      "mirror": "swesmith/oauthlib__oauthlib.1fd52536",
+      "docker_image": "jyangballin/swesmith.x86_64.oauthlib_1776_oauthlib.1fd52536",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "pallets__click.fde47b4b": {
+      "owner": "pallets",
+      "repo": "click",
+      "commit": "fde47b4b4f978f179b9dff34583cb2b99021f482",
+      "mirror": "swesmith/pallets__click.fde47b4b",
+      "docker_image": "jyangballin/swesmith.x86_64.pallets_1776_click.fde47b4b",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "pallets__jinja.ada0a9a6": {
+      "owner": "pallets",
+      "repo": "jinja",
+      "commit": "ada0a9a6fc265128b46949b5144d2eaa55e6df2c",
+      "mirror": "swesmith/pallets__jinja.ada0a9a6",
+      "docker_image": "jyangballin/swesmith.x86_64.pallets_1776_jinja.ada0a9a6",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "pandas-dev__pandas.95280573": {
+      "owner": "pandas-dev",
+      "repo": "pandas",
+      "commit": "95280573e15be59036f98d82a8792599c10c6603",
+      "mirror": "swesmith/pandas-dev__pandas.95280573",
+      "docker_image": "jyangballin/swesmith.x86_64.pandas-dev_1776_pandas.95280573",
+      "task_count": 5,
+      "python_version": "3.10",
+      "install_cmds": [
+        "git remote add upstream https://github.com/pandas-dev/pandas.git",
+        "git fetch upstream --tags",
+        "python -m pip install -ve . --no-build-isolation -Ceditable-verbose=true",
+        "sed -i 's/__version__=\"[^\"]*\"/__version__=\"3.0.0.dev0+1992.g95280573e1\"/' build/cp310/_version_meson.py"
+      ],
+      "pre_install_pip": [
+        "meson-python>=0.13.1 meson>=1.2.1 ninja cython>=3.0 numpy versioneer[toml] python-dateutil pytz hypothesis pytest-xdist"
+      ],
+      "extra_pip": [],
+      "system_packages": [],
+      "resources": {
+        "cpu": 4,
+        "memoryGb": 8,
+        "diskGb": 20
+      },
+      "notes": "Profile builds pandas from source with --no-build-isolation; build requirements normally come from the conda env yml."
+    },
+    "paramiko__paramiko.23f92003": {
+      "owner": "paramiko",
+      "repo": "paramiko",
+      "commit": "23f92003898b060df0e2b8b1d889455264e63a3e",
+      "mirror": "swesmith/paramiko__paramiko.23f92003",
+      "docker_image": "jyangballin/swesmith.x86_64.paramiko_1776_paramiko.23f92003",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "pdfminer__pdfminer.six.1a8bd2f7": {
+      "owner": "pdfminer",
+      "repo": "pdfminer.six",
+      "commit": "1a8bd2f730295b31d6165e4d95fcb5a03793c978",
+      "mirror": "swesmith/pdfminer__pdfminer.six.1a8bd2f7",
+      "docker_image": "jyangballin/swesmith.x86_64.pdfminer_1776_pdfminer.six.1a8bd2f7",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "pyasn1__pyasn1.0f07d724": {
+      "owner": "pyasn1",
+      "repo": "pyasn1",
+      "commit": "0f07d7242a78ab4d129b26256d7474f7168cf536",
+      "mirror": "swesmith/pyasn1__pyasn1.0f07d724",
+      "docker_image": "jyangballin/swesmith.x86_64.pyasn1_1776_pyasn1.0f07d724",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "pydantic__pydantic.acb0f10f": {
+      "owner": "pydantic",
+      "repo": "pydantic",
+      "commit": "acb0f10fda1c78441e052c57b4288bc91431f852",
+      "mirror": "swesmith/pydantic__pydantic.acb0f10f",
+      "docker_image": "jyangballin/swesmith.x86_64.pydantic_1776_pydantic.acb0f10f",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e .[email,timezone]"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "dirty-equals",
+        "pytest-mock",
+        "pytest-examples",
+        "cloudpickle",
+        "rich",
+        "eval-type-backport",
+        "faker",
+        "pytest-benchmark",
+        "email-validator",
+        "jsonschema",
+        "pytz"
+      ],
+      "system_packages": [],
+      "notes": "Profile uses make install (uv sync into its own venv); fallback installs the package plus the test dependency group directly."
+    },
+    "pydata__patsy.a5d16484": {
+      "owner": "pydata",
+      "repo": "patsy",
+      "commit": "a5d1648401b0ea0649b077f4b98da27db947d2d0",
+      "mirror": "swesmith/pydata__patsy.a5d16484",
+      "docker_image": "jyangballin/swesmith.x86_64.pydata_1776_patsy.a5d16484",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e .[test]"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "pydicom__pydicom.7d361b3d": {
+      "owner": "pydicom",
+      "repo": "pydicom",
+      "commit": "7d361b3d764dbbb1f8ad7af015e80ce96f6bf286",
+      "mirror": "swesmith/pydicom__pydicom.7d361b3d",
+      "docker_image": "jyangballin/swesmith.x86_64.pydicom_1776_pydicom.7d361b3d",
+      "task_count": 3,
+      "python_version": "3.11",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "pygments__pygments.27649ebb": {
+      "owner": "pygments",
+      "repo": "pygments",
+      "commit": "27649ebbf5a2519725036b48ec99ef7745f100af",
+      "mirror": "swesmith/pygments__pygments.27649ebb",
+      "docker_image": "jyangballin/swesmith.x86_64.pygments_1776_pygments.27649ebb",
+      "task_count": 3,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "pylint-dev__astroid.b114f6b5": {
+      "owner": "pylint-dev",
+      "repo": "astroid",
+      "commit": "b114f6b58e749b8ab47f80490dce73ea80d8015f",
+      "mirror": "swesmith/pylint-dev__astroid.b114f6b5",
+      "docker_image": "jyangballin/swesmith.x86_64.pylint-dev_1776_astroid.b114f6b5",
+      "task_count": 3,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "python-hyper__h11.bed0dd4a": {
+      "owner": "python-hyper",
+      "repo": "h11",
+      "commit": "bed0dd4ae9774b962b19833941bb9ec4dc403da9",
+      "mirror": "swesmith/python-hyper__h11.bed0dd4a",
+      "docker_image": "jyangballin/swesmith.x86_64.python-hyper_1776_h11.bed0dd4a",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "python-openxml__python-docx.0cf6d71f": {
+      "owner": "python-openxml",
+      "repo": "python-docx",
+      "commit": "0cf6d71fb47ede07ecd5de2a8655f9f46c5f083d",
+      "mirror": "swesmith/python-openxml__python-docx.0cf6d71f",
+      "docker_image": "jyangballin/swesmith.x86_64.python-openxml_1776_python-docx.0cf6d71f",
+      "task_count": 3,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "python-trio__trio.cfbbe2c1": {
+      "owner": "python-trio",
+      "repo": "trio",
+      "commit": "cfbbe2c1f96e93b19bc2577d2cab3f4fe2e81153",
+      "mirror": "swesmith/python-trio__trio.cfbbe2c1",
+      "docker_image": "jyangballin/swesmith.x86_64.python-trio_1776_trio.cfbbe2c1",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "trustme",
+        "astor",
+        "isort",
+        "black",
+        "ruff",
+        "pylint",
+        "jedi",
+        "pyOpenSSL==25.0.0",
+        "cryptography<45"
+      ],
+      "system_packages": [],
+      "notes": "Test-only deps from trio's test-requirements; pyOpenSSL/cryptography era-pinned because newer majors break the DTLS test context."
+    },
+    "pyupio__safety.7654596b": {
+      "owner": "pyupio",
+      "repo": "safety",
+      "commit": "7654596be933f8310b294dbc85a7af6066d06e4f",
+      "mirror": "swesmith/pyupio__safety.7654596b",
+      "docker_image": "jyangballin/swesmith.x86_64.pyupio_1776_safety.7654596b",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "r1chardj0n3s__parse.30da9e4f": {
+      "owner": "r1chardj0n3s",
+      "repo": "parse",
+      "commit": "30da9e4f37fdd979487c9fe2673df35b6b204c72",
+      "mirror": "swesmith/r1chardj0n3s__parse.30da9e4f",
+      "docker_image": "jyangballin/swesmith.x86_64.r1chardj0n3s_1776_parse.30da9e4f",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "rubik__radon.54b88e58": {
+      "owner": "rubik",
+      "repo": "radon",
+      "commit": "54b88e5878b2724bf4d77f97349588b811abdff2",
+      "mirror": "swesmith/rubik__radon.54b88e58",
+      "docker_image": "jyangballin/swesmith.x86_64.rubik_1776_radon.54b88e58",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "scanny__python-pptx.278b47b1": {
+      "owner": "scanny",
+      "repo": "python-pptx",
+      "commit": "278b47b1dedd5b46ee84c286e77cdfb0bf4594be",
+      "mirror": "swesmith/scanny__python-pptx.278b47b1",
+      "docker_image": "jyangballin/swesmith.x86_64.scanny_1776_python-pptx.278b47b1",
+      "task_count": 4,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "seperman__deepdiff.ed252022": {
+      "owner": "seperman",
+      "repo": "deepdiff",
+      "commit": "ed2520229d0369813f6e54cdf9c7e68e8073ef62",
+      "mirror": "swesmith/seperman__deepdiff.ed252022",
+      "docker_image": "jyangballin/swesmith.x86_64.seperman_1776_deepdiff.ed252022",
+      "task_count": 3,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -r requirements-dev.txt",
+        "pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "sqlfluff__sqlfluff.50a1c4b6": {
+      "owner": "sqlfluff",
+      "repo": "sqlfluff",
+      "commit": "50a1c4b6ff171188b6b70b39afe82a707b4919ac",
+      "mirror": "swesmith/sqlfluff__sqlfluff.50a1c4b6",
+      "docker_image": "jyangballin/swesmith.x86_64.sqlfluff_1776_sqlfluff.50a1c4b6",
+      "task_count": 3,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "stanfordnlp__dspy.651a4c71": {
+      "owner": "stanfordnlp",
+      "repo": "dspy",
+      "commit": "651a4c715ecc6c5e68b68d22172768f0b20f2eea",
+      "mirror": "swesmith/stanfordnlp__dspy.651a4c71",
+      "docker_image": "jyangballin/swesmith.x86_64.stanfordnlp_1776_dspy.651a4c71",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [
+        "pillow",
+        "mcp",
+        "datamodel-code-generator",
+        "litellm[proxy]==1.72.4"
+      ],
+      "system_packages": [],
+      "notes": "Test-only deps from the conda env yml; litellm era-pinned (with proxy extras for the mock LLM server fixture) because newer versions change ModelResponse mocking behavior. The image-handling F2P tests fetch URLs, so they need outbound HTTP."
+    },
+    "sunpy__sunpy.f8edfd5c": {
+      "owner": "sunpy",
+      "repo": "sunpy",
+      "commit": "f8edfd5c4be873fbd28dec4583e7f737a045f546",
+      "mirror": "swesmith/sunpy__sunpy.f8edfd5c",
+      "docker_image": "jyangballin/swesmith.x86_64.sunpy_1776_sunpy.f8edfd5c",
+      "task_count": 2,
+      "python_version": "3.11",
+      "install_cmds": [
+        "pip install -e \".[dev]\""
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": [],
+      "resources": {
+        "memoryGb": 8
+      },
+      "notes": "Compiles C extensions and loads large test fixtures."
+    },
+    "tkrajina__gpxpy.09fc46b3": {
+      "owner": "tkrajina",
+      "repo": "gpxpy",
+      "commit": "09fc46b3cad16b5bf49edf8e7ae873794a959620",
+      "mirror": "swesmith/tkrajina__gpxpy.09fc46b3",
+      "docker_image": "jyangballin/swesmith.x86_64.tkrajina_1776_gpxpy.09fc46b3",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "tobymao__sqlglot.036601ba": {
+      "owner": "tobymao",
+      "repo": "sqlglot",
+      "commit": "036601ba9cbe4d175d6a9d38bc27587eab858968",
+      "mirror": "swesmith/tobymao__sqlglot.036601ba",
+      "docker_image": "jyangballin/swesmith.x86_64.tobymao_1776_sqlglot.036601ba",
+      "task_count": 2,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e \".[dev]\""
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "tornadoweb__tornado.d5ac65c1": {
+      "owner": "tornadoweb",
+      "repo": "tornado",
+      "commit": "d5ac65c1f1453c2aeddd089d8e68c159645c13e1",
+      "mirror": "swesmith/tornadoweb__tornado.d5ac65c1",
+      "docker_image": "jyangballin/swesmith.x86_64.tornadoweb_1776_tornado.d5ac65c1",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "tweepy__tweepy.91a41c6e": {
+      "owner": "tweepy",
+      "repo": "tweepy",
+      "commit": "91a41c6e1c955d278c370d51d5cf43b05f7cd979",
+      "mirror": "swesmith/tweepy__tweepy.91a41c6e",
+      "docker_image": "jyangballin/swesmith.x86_64.tweepy_1776_tweepy.91a41c6e",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "pip install -e '.[dev,test,async]'"
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    },
+    "weaveworks__grafanalib.5c3b17ed": {
+      "owner": "weaveworks",
+      "repo": "grafanalib",
+      "commit": "5c3b17edaa437f0bc09b5f1b9275dc8fb91689fb",
+      "mirror": "swesmith/weaveworks__grafanalib.5c3b17ed",
+      "docker_image": "jyangballin/swesmith.x86_64.weaveworks_1776_grafanalib.5c3b17ed",
+      "task_count": 1,
+      "python_version": "3.10",
+      "install_cmds": [
+        "python -m pip install -e ."
+      ],
+      "pre_install_pip": [],
+      "extra_pip": [],
+      "system_packages": []
+    }
+  }
+}
