@@ -16,7 +16,7 @@ export type CommandResult = {
   returnCode: number;
 };
 
-export type ProviderName = "local" | "vercel" | "modal" | "daytona";
+export type ProviderName = "local" | "vercel" | "modal" | "daytona" | "aws-microvm";
 export type RunMode = "cold" | "warm";
 export type RunKind = "verifier" | "solve";
 
@@ -51,6 +51,9 @@ export type BenchArgs = {
   vercelSnapshotId?: string;
   modalImageId?: string;
   daytonaSnapshot?: string;
+  awsMicrovmImageId?: string;
+  awsMicrovmImageVersion?: string;
+  awsMicrovmExecutionRoleArn?: string;
   concurrency: number;
   cpu: number;
   memoryGb: number;

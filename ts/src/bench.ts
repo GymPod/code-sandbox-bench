@@ -55,6 +55,9 @@ function parseArgs(argv: string[]): BenchArgs {
     vercelSnapshotId: values.get("--vercel-snapshot-id") ?? process.env.VERCEL_SNAPSHOT_ID,
     modalImageId: values.get("--modal-image-id") ?? process.env.MODAL_IMAGE_ID,
     daytonaSnapshot: values.get("--daytona-snapshot") ?? process.env.DAYTONA_SNAPSHOT,
+    awsMicrovmImageId: values.get("--aws-microvm-image-id") ?? process.env.AWS_MICROVM_IMAGE_ID,
+    awsMicrovmImageVersion: values.get("--aws-microvm-image-version") ?? process.env.AWS_MICROVM_IMAGE_VERSION,
+    awsMicrovmExecutionRoleArn: values.get("--aws-microvm-execution-role-arn") ?? process.env.AWS_MICROVM_EXECUTION_ROLE_ARN,
     concurrency: Number.parseInt(values.get("--concurrency") ?? "100", 10),
     cpu: Number.parseInt(values.get("--cpu") ?? "2", 10),
     memoryGb: Number.parseInt(values.get("--memory-gb") ?? "4", 10),
@@ -98,6 +101,11 @@ function estimateCost(provider: string, seconds: number, cpu: number, memoryGb: 
   if (provider === "daytona") {
     const billableStorageGb = Math.max(0, diskGb - 5);
     return seconds * (cpu * 0.000014 + memoryGb * 0.0000045 + billableStorageGb * 0.00000003);
+  }
+  if (provider === "aws-microvm") {
+    const vcpuHour = Number.parseFloat(process.env.AWS_MICROVM_ESTIMATE_VCPU_HOUR_USD ?? "0");
+    const gbHour = Number.parseFloat(process.env.AWS_MICROVM_ESTIMATE_GB_HOUR_USD ?? "0");
+    return (seconds / 3600) * (cpu * vcpuHour + memoryGb * gbHour);
   }
   return 0;
 }
@@ -443,7 +451,10 @@ async function runTaskAttempt(args: BenchArgs, task: BenchTask): Promise<Record<
       prewarmProfile: args.prewarmProfile,
       vercelSnapshotId: args.vercelSnapshotId,
       modalImageId: taskEnv.envType === "harbor_swesmith" ? undefined : args.modalImageId,
-      daytonaSnapshot: taskEnv.envType === "harbor_swesmith" ? undefined : args.daytonaSnapshot
+      daytonaSnapshot: taskEnv.envType === "harbor_swesmith" ? undefined : args.daytonaSnapshot,
+      awsMicrovmImageId: args.awsMicrovmImageId,
+      awsMicrovmImageVersion: args.awsMicrovmImageVersion,
+      awsMicrovmExecutionRoleArn: args.awsMicrovmExecutionRoleArn
     });
     provider = activeProvider;
     await timed("start", () => activeProvider.start());
@@ -641,6 +652,9 @@ function effectiveWorkerCount(tasks: BenchTask[], args: BenchArgs): number {
   const requested = Math.max(1, Math.min(args.concurrency, tasks.length));
   if (args.provider === "daytona" && tasks.some((task) => task.env_type === "harbor_swesmith")) {
     return 1;
+  }
+  if (args.provider === "aws-microvm") {
+    return Math.min(requested, Number.parseInt(process.env.AWS_MICROVM_MAX_CONCURRENCY ?? "4", 10));
   }
   return requested;
 }

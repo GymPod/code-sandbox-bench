@@ -2,7 +2,7 @@
 
 Benchmark harness for running code-repair tasks across sandbox providers.
 
-The project currently compares Vercel, Modal, and Daytona on TerminalBench and SWE-Smith style tasks. It records sandbox lifecycle timings, solver/verifier status, output tails, and provider cost estimates so warm and cold runs can be compared with the same task set.
+The project currently compares Vercel, Modal, Daytona, and AWS Lambda MicroVMs on TerminalBench and SWE-Smith style tasks. It records sandbox lifecycle timings, solver/verifier status, output tails, and provider cost estimates so warm and cold runs can be compared with the same task set.
 
 ## Repository Layout
 
@@ -101,6 +101,7 @@ Provider-specific setup details live in [docs/providers/](docs/providers/).
 - Vercel uses `@vercel/sandbox`. Configure `VERCEL_API_KEY`, `VERCEL_ACCESS_TOKEN`, or `VERCEL_TOKEN`, plus `VERCEL_TEAM_ID` and `VERCEL_PROJECT_ID` unless OIDC credentials are available.
 - Modal uses the Modal SDK credentials supported by `modal`.
 - Daytona uses `DAYTONA_API_KEY` and, when needed, `DAYTONA_API_URL` and `DAYTONA_TARGET`.
+- AWS Lambda MicroVMs uses `@aws-sdk/client-lambda-microvms`. Build a runner image once with `bun run prewarm --provider aws-microvm --aws-bucket <bucket> --aws-build-role-arn <role-arn> --output ../results/prewarm-aws-microvm.json`, then reuse the emitted `AWS_MICROVM_IMAGE_ID` for `bench` or `matrix` runs. Runtime execution can use `AWS_MICROVM_EXECUTION_ROLE_ARN` when the MicroVM needs AWS service access; the benchmark runner itself only needs ingress/egress connectors.
 - Cost estimates are harness estimates from measured wall-clock time and configured provider rates. They exclude OpenRouter model spend.
 
 ### Warm Artifacts And Saved State
@@ -112,6 +113,7 @@ provider | identifier | emitted to | reused via
 Vercel | `VERCEL_SNAPSHOT_ID` | `results/prewarm-vercel-*.json` | `--vercel-snapshot-id` or the `VERCEL_SNAPSHOT_ID` env var
 Modal | `MODAL_IMAGE_ID` | `results/prewarm-modal-*.json` | `--modal-image-id` or the `MODAL_IMAGE_ID` env var
 Daytona | `DAYTONA_SNAPSHOT` | `results/prewarm-daytona-*.json` | `--daytona-snapshot` or the `DAYTONA_SNAPSHOT` env var
+AWS Lambda MicroVMs | `AWS_MICROVM_IMAGE_ID` | `results/prewarm-aws-microvm-*.json` | `--aws-microvm-image-id` or the `AWS_MICROVM_IMAGE_ID` env var
 
 To run warm, copy the identifier from the prewarm result JSON into the corresponding flag or env var on the next `bench.ts`/`matrix.ts` run. For TerminalBench (non-Docker) tasks, Daytona instead uses a cached profile via `--prewarm-profile` (default `terminalbench-smoke`) rather than a named snapshot.
 

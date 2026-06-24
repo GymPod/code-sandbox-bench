@@ -5,6 +5,7 @@ These docs describe how the TypeScript harness configures each remote sandbox pr
 - [Vercel](vercel.md)
 - [Modal](modal.md)
 - [Daytona](daytona.md)
+- [AWS Lambda MicroVMs](aws-microvm.md)
 
 The common execution path lives in `ts/src/bench.ts`:
 
@@ -22,7 +23,7 @@ The common execution path lives in `ts/src/bench.ts`:
 env type | workdir | environment strategy
 --- | --- | ---
 `terminalbench` | `/workspace` | Use the requested runtime image plus optional prewarm profile.
-`harbor_swesmith` | `/testbed` | Modal and Daytona use the SWE-Smith task Docker image/Dockerfile setup; Vercel reconstructs the repo environment from `data/swesmith_env_manifests.json`.
+`harbor_swesmith` | `/testbed` | Modal and Daytona use the SWE-Smith task Docker image/Dockerfile setup; Vercel and AWS Lambda MicroVMs reconstruct the repo environment from `data/swesmith_env_manifests.json`.
 
 ## Cold vs Warm
 
@@ -32,4 +33,4 @@ env type | workdir | environment strategy
 - Warm TerminalBench runs may pass a provider-specific snapshot/image/profile id.
 - SWE-Smith task-Docker datasets intentionally do not use generic Modal/Daytona warm artifacts in `ts/src/matrix.ts`, because each task can require a different image.
 - Vercel can use a snapshot id, but SWE-Smith correctness still depends on the manifest-driven `/testbed` setup matching each repo.
-
+- AWS Lambda MicroVMs use a prebuilt MicroVM image id for both cold and warm benchmark runs; each task still gets its own fresh MicroVM instance.

@@ -6,6 +6,7 @@ import type { CommandResult } from "./types";
 import { Daytona, Image as DaytonaImage, type Sandbox as DaytonaSandbox } from "@daytona/sdk";
 import { Sandbox as VercelSandbox } from "@vercel/sandbox";
 import { ModalClient, type App, type Image as ModalImage, type Sandbox as ModalSandbox } from "modal";
+import { AwsMicrovmSandbox, awsMicrovmConfigFromEnv } from "./aws_microvm";
 
 export interface Provider {
   start(): Promise<void>;
@@ -24,6 +25,9 @@ export type ProviderOptions = {
   vercelSnapshotId?: string;
   modalImageId?: string;
   daytonaSnapshot?: string;
+  awsMicrovmImageId?: string;
+  awsMicrovmImageVersion?: string;
+  awsMicrovmExecutionRoleArn?: string;
 };
 
 export const TERMINALBENCH_DEBIAN_PREWARM_COMMANDS = [
@@ -357,6 +361,43 @@ export class DaytonaProvider implements Provider {
   }
 }
 
+export class AwsMicrovmProvider implements Provider {
+  private sandbox: AwsMicrovmSandbox | undefined;
+
+  constructor(
+    private readonly timeoutSeconds: number,
+    private readonly imageIdentifier: string | undefined,
+    private readonly imageVersion: string | undefined,
+    private readonly executionRoleArn: string | undefined
+  ) {}
+
+  async start(): Promise<void> {
+    this.sandbox = new AwsMicrovmSandbox(
+      awsMicrovmConfigFromEnv({
+        imageIdentifier: this.imageIdentifier,
+        imageVersion: this.imageVersion,
+        executionRoleArn: this.executionRoleArn,
+        timeoutSeconds: this.timeoutSeconds
+      })
+    );
+    await this.sandbox.start();
+  }
+
+  async run(command: string, cwd: string | undefined, timeoutSeconds: number): Promise<CommandResult> {
+    if (!this.sandbox) {
+      throw new Error("AWS MicroVM sandbox not started");
+    }
+    return await this.sandbox.run(command, cwd, timeoutSeconds);
+  }
+
+  async stop(): Promise<void> {
+    if (this.sandbox) {
+      await this.sandbox.stop();
+      this.sandbox = undefined;
+    }
+  }
+}
+
 async function retryDaytonaStart(action: (attempt: number) => Promise<void>): Promise<void> {
   const attempts = 3;
   let lastError: unknown;
@@ -427,6 +468,14 @@ export function makeProvider(
       options.dockerfileCommands,
       options.prewarmProfile,
       options.daytonaSnapshot
+    );
+  }
+  if (name === "aws-microvm") {
+    return new AwsMicrovmProvider(
+      options.timeoutSeconds,
+      options.awsMicrovmImageId,
+      options.awsMicrovmImageVersion,
+      options.awsMicrovmExecutionRoleArn
     );
   }
   throw new Error(`Unsupported TypeScript provider: ${name}`);

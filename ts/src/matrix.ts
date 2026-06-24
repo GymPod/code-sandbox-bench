@@ -18,6 +18,7 @@ type MatrixArgs = {
   vercelConcurrency?: number;
   modalConcurrency?: number;
   daytonaConcurrency?: number;
+  awsMicrovmConcurrency?: number;
   runConcurrency: number;
   cpu: number;
   memoryGb: number;
@@ -28,9 +29,13 @@ type MatrixArgs = {
   vercelRuntime: string;
   modalRuntime: string;
   daytonaRuntime: string;
+  awsMicrovmRuntime: string;
   vercelSnapshotId?: string;
   modalImageId?: string;
   daytonaSnapshot?: string;
+  awsMicrovmImageId?: string;
+  awsMicrovmImageVersion?: string;
+  awsMicrovmExecutionRoleArn?: string;
   output?: string;
 };
 
@@ -56,7 +61,7 @@ type RunResult = {
   elapsed_seconds: number;
 };
 
-const ALL_PROVIDERS: MatrixProvider[] = ["vercel", "modal", "daytona"];
+const ALL_PROVIDERS: MatrixProvider[] = ["vercel", "modal", "daytona", "aws-microvm"];
 const ALL_MODES: RunMode[] = ["cold", "warm"];
 
 function parseArgs(argv: string[]): MatrixArgs {
@@ -80,6 +85,7 @@ function parseArgs(argv: string[]): MatrixArgs {
     vercelConcurrency: parseOptionalInt(values.get("--vercel-concurrency")),
     modalConcurrency: parseOptionalInt(values.get("--modal-concurrency")),
     daytonaConcurrency: parseOptionalInt(values.get("--daytona-concurrency")),
+    awsMicrovmConcurrency: parseOptionalInt(values.get("--aws-microvm-concurrency")),
     runConcurrency: Number.parseInt(values.get("--run-concurrency") ?? String(providers.length * modes.length), 10),
     cpu: Number.parseInt(values.get("--cpu") ?? "2", 10),
     memoryGb: Number.parseInt(values.get("--memory-gb") ?? "4", 10),
@@ -90,9 +96,13 @@ function parseArgs(argv: string[]): MatrixArgs {
     vercelRuntime: values.get("--vercel-runtime") ?? "python3.13",
     modalRuntime: values.get("--modal-runtime") ?? "python:3.13",
     daytonaRuntime: values.get("--daytona-runtime") ?? "python:3.13",
+    awsMicrovmRuntime: values.get("--aws-microvm-runtime") ?? "python3.13",
     vercelSnapshotId: values.get("--vercel-snapshot-id") ?? process.env.VERCEL_SNAPSHOT_ID,
     modalImageId: values.get("--modal-image-id") ?? process.env.MODAL_IMAGE_ID,
     daytonaSnapshot: values.get("--daytona-snapshot") ?? process.env.DAYTONA_SNAPSHOT,
+    awsMicrovmImageId: values.get("--aws-microvm-image-id") ?? process.env.AWS_MICROVM_IMAGE_ID,
+    awsMicrovmImageVersion: values.get("--aws-microvm-image-version") ?? process.env.AWS_MICROVM_IMAGE_VERSION,
+    awsMicrovmExecutionRoleArn: values.get("--aws-microvm-execution-role-arn") ?? process.env.AWS_MICROVM_EXECUTION_ROLE_ARN,
     output: values.get("--output")
   };
 }
@@ -138,6 +148,9 @@ function runtimeFor(provider: MatrixProvider, args: MatrixArgs): string {
   if (provider === "modal") {
     return args.modalRuntime;
   }
+  if (provider === "aws-microvm") {
+    return args.awsMicrovmRuntime;
+  }
   return args.daytonaRuntime;
 }
 
@@ -180,6 +193,7 @@ function buildRunSpecs(args: MatrixArgs): RunSpec[] {
         output
       ];
       argv.push(...warmProviderArgs(provider, mode, args));
+      argv.push(...awsMicrovmArgs(provider, args));
       return { provider, mode, runtime, taskConcurrency, output, argv };
     })
   );
@@ -192,6 +206,9 @@ function taskConcurrencyFor(provider: MatrixProvider, args: MatrixArgs): number 
   }
   if (provider === "modal") {
     return args.modalConcurrency ?? (usesTaskDockerDataset(args) ? 1 : Math.min(args.concurrency, Math.max(1, Math.floor(5 / modeCount))));
+  }
+  if (provider === "aws-microvm") {
+    return args.awsMicrovmConcurrency ?? Math.min(args.concurrency, Math.max(1, Math.floor(4 / modeCount)));
   }
   const cpuCap = Math.floor(10 / args.cpu / modeCount);
   const memoryCap = Math.floor(10 / args.memoryGb / modeCount);
@@ -224,6 +241,17 @@ function warmProviderArgs(provider: MatrixProvider, mode: RunMode, args: MatrixA
     return ["--daytona-snapshot", args.daytonaSnapshot];
   }
   return args.dataset.includes("terminalbench") ? ["--prewarm-profile", args.prewarmProfile] : [];
+}
+
+function awsMicrovmArgs(provider: MatrixProvider, args: MatrixArgs): string[] {
+  if (provider !== "aws-microvm") {
+    return [];
+  }
+  return [
+    ...(args.awsMicrovmImageId ? ["--aws-microvm-image-id", args.awsMicrovmImageId] : []),
+    ...(args.awsMicrovmImageVersion ? ["--aws-microvm-image-version", args.awsMicrovmImageVersion] : []),
+    ...(args.awsMicrovmExecutionRoleArn ? ["--aws-microvm-execution-role-arn", args.awsMicrovmExecutionRoleArn] : [])
+  ];
 }
 
 async function runSpec(spec: RunSpec): Promise<RunResult> {
