@@ -208,11 +208,18 @@ function taskConcurrencyFor(provider: MatrixProvider, args: MatrixArgs): number 
     return args.modalConcurrency ?? (usesTaskDockerDataset(args) ? 1 : Math.min(args.concurrency, Math.max(1, Math.floor(5 / modeCount))));
   }
   if (provider === "aws-microvm") {
-    return args.awsMicrovmConcurrency ?? Math.min(args.concurrency, Math.max(1, Math.floor(4 / modeCount)));
+    const accountMemoryGb = envNumber("AWS_MICROVM_ACCOUNT_MEMORY_GB", 4);
+    const memoryCap = Math.max(1, Math.floor(accountMemoryGb / args.memoryGb / modeCount));
+    return args.awsMicrovmConcurrency ?? Math.min(args.concurrency, memoryCap);
   }
   const cpuCap = Math.floor(10 / args.cpu / modeCount);
   const memoryCap = Math.floor(10 / args.memoryGb / modeCount);
   return args.daytonaConcurrency ?? Math.min(args.concurrency, Math.max(1, Math.min(cpuCap, memoryCap)));
+}
+
+function envNumber(name: string, fallback: number): number {
+  const value = process.env[name];
+  return value === undefined ? fallback : Number.parseFloat(value);
 }
 
 function usesTaskDockerDataset(args: MatrixArgs): boolean {

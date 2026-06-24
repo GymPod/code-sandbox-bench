@@ -9,7 +9,8 @@ import {
   CreateMicrovmImageCommand,
   DeleteMicrovmImageCommand,
   GetMicrovmImageCommand,
-  LambdaMicrovmsClient
+  LambdaMicrovmsClient,
+  ListMicrovmImagesCommand
 } from "@aws-sdk/client-lambda-microvms";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { debianPrewarmCommands, vercelCredentials, vercelPrewarmCommand } from "./providers";
@@ -215,8 +216,12 @@ async function prewarmAwsMicrovm(args: PrewarmArgs): Promise<Record<string, unkn
 }
 
 async function deleteAwsMicrovmImageIfExists(client: LambdaMicrovmsClient, imageIdentifier: string): Promise<void> {
+  const resolvedImageIdentifier = await resolveAwsMicrovmImageIdentifier(client, imageIdentifier);
+  if (!resolvedImageIdentifier) {
+    return;
+  }
   try {
-    await client.send(new DeleteMicrovmImageCommand({ imageIdentifier }));
+    await client.send(new DeleteMicrovmImageCommand({ imageIdentifier: resolvedImageIdentifier }));
   } catch (error) {
     if (error instanceof Error && error.name === "ResourceNotFoundException") {
       return;
@@ -226,7 +231,7 @@ async function deleteAwsMicrovmImageIfExists(client: LambdaMicrovmsClient, image
   const started = performance.now();
   while ((performance.now() - started) / 1000 < 180) {
     try {
-      const image = await client.send(new GetMicrovmImageCommand({ imageIdentifier }));
+      const image = await client.send(new GetMicrovmImageCommand({ imageIdentifier: resolvedImageIdentifier }));
       if (image.state === "DELETED") {
         return;
       }
@@ -238,7 +243,18 @@ async function deleteAwsMicrovmImageIfExists(client: LambdaMicrovmsClient, image
     }
     await sleep(5000);
   }
-  throw new Error(`Timed out waiting for AWS MicroVM image deletion: ${imageIdentifier}`);
+  throw new Error(`Timed out waiting for AWS MicroVM image deletion: ${resolvedImageIdentifier}`);
+}
+
+async function resolveAwsMicrovmImageIdentifier(
+  client: LambdaMicrovmsClient,
+  imageIdentifier: string
+): Promise<string | undefined> {
+  if (imageIdentifier.startsWith("arn:")) {
+    return imageIdentifier;
+  }
+  const listed = await client.send(new ListMicrovmImagesCommand({ nameFilter: imageIdentifier, maxResults: 50 }));
+  return listed.items?.find((item) => item.name === imageIdentifier)?.imageArn;
 }
 
 function awsMicrovmHooks(args: PrewarmArgs) {

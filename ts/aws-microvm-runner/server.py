@@ -12,13 +12,28 @@ from urllib.parse import unquote
 
 PORT = int(os.environ.get("AWS_MICROVM_RUNNER_PORT", "8080"))
 MAX_BODY_BYTES = int(os.environ.get("AWS_MICROVM_RUNNER_MAX_BODY_BYTES", str(4 * 1024 * 1024)))
+MAX_OUTPUT_BYTES = int(os.environ.get("AWS_MICROVM_RUNNER_MAX_OUTPUT_BYTES", str(2 * 1024 * 1024)))
 LIFECYCLE_PREFIX = "/aws/lambda-microvms/runtime/v1/"
+JOB_DIR = Path(os.environ.get("AWS_MICROVM_RUNNER_JOB_DIR", "/tmp/code-sandbox-bench-jobs"))
 JOBS = {}
 JOBS_LOCK = threading.Lock()
 
 
 def json_bytes(payload):
     return json.dumps(payload, separators=(",", ":")).encode("utf-8")
+
+
+def read_output(raw_path):
+    if not raw_path:
+        return ""
+    path = Path(str(raw_path))
+    if not path.exists():
+        return ""
+    with path.open("rb") as stream:
+        size = path.stat().st_size
+        if size > MAX_OUTPUT_BYTES:
+            stream.seek(-MAX_OUTPUT_BYTES, os.SEEK_END)
+        return stream.read().decode("utf-8", "replace")
 
 
 class RunnerHandler(BaseHTTPRequestHandler):
@@ -83,6 +98,8 @@ class RunnerHandler(BaseHTTPRequestHandler):
                 "jobId": job_id,
                 "status": "running",
                 "startedAt": time.time(),
+                "stdoutPath": str(JOB_DIR / f"{job_id}.stdout"),
+                "stderrPath": str(JOB_DIR / f"{job_id}.stderr"),
                 "stdout": "",
                 "stderr": "",
                 "returnCode": None,
@@ -97,18 +114,25 @@ class RunnerHandler(BaseHTTPRequestHandler):
             job = JOBS.get(job_id)
             if job is None:
                 return {"error": "job not found", "returnCode": 1}
-            return dict(job)
+            snapshot = dict(job)
+        snapshot["stdout"] = read_output(snapshot.get("stdoutPath"))
+        snapshot["stderr"] = read_output(snapshot.get("stderrPath"))
+        snapshot.pop("stdoutPath", None)
+        snapshot.pop("stderrPath", None)
+        return snapshot
 
     def run_job(self, job_id, command, cwd, timeout):
-        result = self.run_shell(command, cwd, timeout)
+        with JOBS_LOCK:
+            job = dict(JOBS.get(job_id) or {})
+        result = self.run_shell(command, cwd, timeout, job.get("stdoutPath"), job.get("stderrPath"))
         with JOBS_LOCK:
             if job_id in JOBS:
                 JOBS[job_id].update(
                     {
                         "status": "completed",
                         "completedAt": time.time(),
-                        "stdout": result["stdout"],
-                        "stderr": result["stderr"],
+                        "stdout": read_output(job.get("stdoutPath")),
+                        "stderr": read_output(job.get("stderrPath")),
                         "returnCode": result["returnCode"],
                     }
                 )
@@ -122,24 +146,31 @@ class RunnerHandler(BaseHTTPRequestHandler):
             return {}
         return json.loads(body.decode("utf-8"))
 
-    def run_shell(self, command, cwd, timeout):
+    def run_shell(self, command, cwd, timeout, stdout_path=None, stderr_path=None):
+        stdout_path = stdout_path or str(JOB_DIR / f"{uuid.uuid4().hex}.stdout")
+        stderr_path = stderr_path or str(JOB_DIR / f"{uuid.uuid4().hex}.stderr")
         try:
-            completed = subprocess.run(
-                ["/bin/sh", "-lc", command],
-                cwd=cwd or "/",
-                text=True,
-                capture_output=True,
-                timeout=timeout,
-                env=os.environ.copy(),
-            )
+            Path(stdout_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(stdout_path, "w", encoding="utf-8", errors="replace") as stdout_file, open(
+                stderr_path, "w", encoding="utf-8", errors="replace"
+            ) as stderr_file:
+                completed = subprocess.run(
+                    ["/bin/sh", "-lc", command],
+                    cwd=cwd or "/",
+                    text=True,
+                    stdout=stdout_file,
+                    stderr=stderr_file,
+                    timeout=timeout,
+                    env=os.environ.copy(),
+                )
             return {
-                "stdout": completed.stdout,
-                "stderr": completed.stderr,
+                "stdout": read_output(stdout_path),
+                "stderr": read_output(stderr_path),
                 "returnCode": completed.returncode,
             }
         except subprocess.TimeoutExpired as exc:
-            stdout = exc.stdout if isinstance(exc.stdout, str) else (exc.stdout or b"").decode("utf-8", "replace")
-            stderr = exc.stderr if isinstance(exc.stderr, str) else (exc.stderr or b"").decode("utf-8", "replace")
+            stdout = read_output(stdout_path)
+            stderr = read_output(stderr_path)
             stderr = f"{stderr}\nCommand timed out after {timeout}s".strip()
             return {"stdout": stdout, "stderr": stderr, "returnCode": 124}
 
@@ -153,6 +184,7 @@ class RunnerHandler(BaseHTTPRequestHandler):
 
 
 def main():
+    JOB_DIR.mkdir(parents=True, exist_ok=True)
     for path in ("/workspace", "/testbed", "/tests", "/solution", "/logs", "/tmp/tb"):
         Path(path).mkdir(parents=True, exist_ok=True)
     server = ThreadingHTTPServer(("0.0.0.0", PORT), RunnerHandler)

@@ -27,6 +27,8 @@ export type AwsMicrovmSandboxConfig = {
   egressNetworkConnectors: string[];
   logGroup?: string;
   clientTokenPrefix: string;
+  startTimeoutSeconds: number;
+  quotaRetryDelaySeconds: number;
 };
 
 export type AwsMicrovmSandboxEnvOptions = {
@@ -48,19 +50,7 @@ export class AwsMicrovmSandbox {
   }
 
   async start(): Promise<void> {
-    const response = await this.client.send(
-      new RunMicrovmCommand({
-        imageIdentifier: this.config.imageIdentifier,
-        imageVersion: this.config.imageVersion,
-        executionRoleArn: this.config.executionRoleArn,
-        maximumDurationInSeconds: this.config.maximumDurationInSeconds,
-        idlePolicy: this.config.idlePolicy,
-        ingressNetworkConnectors: this.config.ingressNetworkConnectors,
-        egressNetworkConnectors: this.config.egressNetworkConnectors,
-        logging: this.config.logGroup ? { cloudWatch: { logGroup: this.config.logGroup } } : undefined,
-        clientToken: `${this.config.clientTokenPrefix}-${randomUUID()}`
-      })
-    );
+    const response = await this.runMicrovmWithQuotaRetry();
     this.microvmId = required(response.microvmId, "RunMicrovm did not return a microvmId");
     this.endpoint = required(response.endpoint, "RunMicrovm did not return an endpoint");
     await this.waitForReady();
@@ -88,6 +78,38 @@ export class AwsMicrovmSandbox {
         throw error;
       }
     }
+  }
+
+  private async runMicrovmWithQuotaRetry(): Promise<{
+    microvmId?: string;
+    endpoint?: string;
+  }> {
+    const started = performance.now();
+    let lastError: unknown;
+    while ((performance.now() - started) / 1000 < this.config.startTimeoutSeconds) {
+      try {
+        return await this.client.send(
+          new RunMicrovmCommand({
+            imageIdentifier: this.config.imageIdentifier,
+            imageVersion: this.config.imageVersion,
+            executionRoleArn: this.config.executionRoleArn,
+            maximumDurationInSeconds: this.config.maximumDurationInSeconds,
+            idlePolicy: this.config.idlePolicy,
+            ingressNetworkConnectors: this.config.ingressNetworkConnectors,
+            egressNetworkConnectors: this.config.egressNetworkConnectors,
+            logging: this.config.logGroup ? { cloudWatch: { logGroup: this.config.logGroup } } : undefined,
+            clientToken: `${this.config.clientTokenPrefix}-${randomUUID()}`
+          })
+        );
+      } catch (error) {
+        lastError = error;
+        if (!isQuotaExceeded(error)) {
+          throw error;
+        }
+        await sleep(this.config.quotaRetryDelaySeconds * 1000);
+      }
+    }
+    throw new Error(`AWS MicroVM start timed out waiting for quota: ${formatError(lastError)}`);
   }
 
   private async waitForReady(): Promise<void> {
@@ -132,25 +154,40 @@ export class AwsMicrovmSandbox {
     if (!startedJob.jobId) {
       throw new Error(startedJob.error ?? "AWS MicroVM command did not return a jobId");
     }
+    let lastPollError: unknown;
     while ((performance.now() - started) / 1000 < timeoutSeconds + 30) {
-      const response = await this.authedFetch(`/commands/${encodeURIComponent(startedJob.jobId)}`, {
-        method: "GET",
-        signal: AbortSignal.timeout(15_000)
-      });
-      const parsed = (await response.json()) as Partial<CommandResult> & { status?: string; error?: string };
-      if (parsed.status === "completed") {
-        return {
-          stdout: String(parsed.stdout ?? ""),
-          stderr: String(parsed.stderr ?? ""),
-          returnCode: Number(parsed.returnCode ?? 1)
-        };
-      }
-      if (parsed.error) {
-        return { stdout: "", stderr: parsed.error, returnCode: 1 };
+      try {
+        const response = await this.authedFetch(`/commands/${encodeURIComponent(startedJob.jobId)}`, {
+          method: "GET",
+          signal: AbortSignal.timeout(15_000)
+        });
+        lastPollError = undefined;
+        const parsed = (await response.json()) as Partial<CommandResult> & { status?: string; error?: string };
+        if (parsed.status === "completed") {
+          return {
+            stdout: String(parsed.stdout ?? ""),
+            stderr: String(parsed.stderr ?? ""),
+            returnCode: Number(parsed.returnCode ?? 1)
+          };
+        }
+        if (parsed.error) {
+          return { stdout: "", stderr: parsed.error, returnCode: 1 };
+        }
+      } catch (error) {
+        lastPollError = error;
+        if (!isRetryablePollError(error)) {
+          throw error;
+        }
+        await this.refreshEndpoint().catch(() => undefined);
+        this.authToken = undefined;
       }
       await sleep(2000);
     }
-    return { stdout: "", stderr: `Command timed out after ${timeoutSeconds}s`, returnCode: 124 };
+    return {
+      stdout: "",
+      stderr: `Command timed out after ${timeoutSeconds}s${lastPollError ? `; last poll error: ${formatError(lastPollError)}` : ""}`,
+      returnCode: 124
+    };
   }
 
   private async authedFetch(path: string, init: RequestInit): Promise<Response> {
@@ -164,7 +201,7 @@ export class AwsMicrovmSandbox {
       }
     });
     if (!response.ok) {
-      throw new Error(`AWS MicroVM request failed with ${response.status}: ${await response.text()}`);
+      throw new AwsMicrovmHttpError(response.status, await response.text());
     }
     return response;
   }
@@ -220,6 +257,8 @@ export function awsMicrovmConfigFromEnv(options: AwsMicrovmSandboxEnvOptions): A
     port,
     authTokenExpirationMinutes: envInt("AWS_MICROVM_AUTH_TOKEN_MINUTES", 30),
     maximumDurationInSeconds,
+    startTimeoutSeconds: envInt("AWS_MICROVM_START_TIMEOUT_SECONDS", 600),
+    quotaRetryDelaySeconds: envInt("AWS_MICROVM_QUOTA_RETRY_SECONDS", 15),
     idlePolicy: {
       maxIdleDurationSeconds: envInt("AWS_MICROVM_MAX_IDLE_DURATION_SECONDS", 120),
       suspendedDurationSeconds: envInt("AWS_MICROVM_SUSPENDED_DURATION_SECONDS", 0),
@@ -271,10 +310,34 @@ function isResourceNotFound(error: unknown): boolean {
   return error instanceof Error && error.name === "ResourceNotFoundException";
 }
 
+function isQuotaExceeded(error: unknown): boolean {
+  return error instanceof Error && error.name === "ServiceQuotaExceededException";
+}
+
 function formatError(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 }
 
 function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+class AwsMicrovmHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly body: string
+  ) {
+    super(`AWS MicroVM request failed with ${status}: ${body}`);
+    this.name = "AwsMicrovmHttpError";
+  }
+}
+
+function isRetryablePollError(error: unknown): boolean {
+  if (error instanceof AwsMicrovmHttpError) {
+    return error.status === 408 || error.status === 409 || error.status === 429 || error.status >= 500;
+  }
+  if (error instanceof Error) {
+    return /AbortError|TimeoutError|ECONNRESET|ETIMEDOUT|fetch failed|network/i.test(`${error.name}: ${error.message}`);
+  }
+  return false;
 }

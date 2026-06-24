@@ -654,9 +654,15 @@ function effectiveWorkerCount(tasks: BenchTask[], args: BenchArgs): number {
     return 1;
   }
   if (args.provider === "aws-microvm") {
-    return Math.min(requested, Number.parseInt(process.env.AWS_MICROVM_MAX_CONCURRENCY ?? "4", 10));
+    const memoryCap = Math.max(1, Math.floor(envNumber("AWS_MICROVM_ACCOUNT_MEMORY_GB", 4) / args.memoryGb));
+    return Math.min(requested, Number.parseInt(process.env.AWS_MICROVM_MAX_CONCURRENCY ?? "1", 10), memoryCap);
   }
   return requested;
+}
+
+function envNumber(name: string, fallback: number): number {
+  const value = process.env[name];
+  return value === undefined ? fallback : Number.parseFloat(value);
 }
 
 function shellQuote(value: string): string {
